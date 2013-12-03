@@ -335,6 +335,11 @@ static char *(features[]) =
 #else
 	"-menu",
 #endif
+#ifdef FEAT_MESSAGEQUEUE
+	"+messagequeue",
+#else
+	"-messagequeue",
+#endif
 #ifdef FEAT_SESSION
 	"+mksession",
 #else

@@ -12354,6 +12354,9 @@ f_has(argvars, rettv)
 #ifdef FEAT_MENU
 	"menu",
 #endif
+#ifdef FEAT_MESSAGEQUEUE
+	"messagequeue",
+#endif
 #ifdef FEAT_SESSION
 	"mksession",
 #endif

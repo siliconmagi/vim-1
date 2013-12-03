@@ -1978,6 +1978,10 @@ typedef int VimClipboard;	/* This is required for the prototypes. */
 
 #include "globals.h"	    /* global variables and messages */
 
+#ifdef FEAT_MESSAGEQUEUE
+# include "message_queue.h"  /* message queue API */
+#endif
+
 #ifdef FEAT_SNIFF
 # include "if_sniff.h"
 #endif

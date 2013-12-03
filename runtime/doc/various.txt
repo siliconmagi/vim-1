@@ -357,6 +357,7 @@ N  *+localmap*		Support for mappings local to a buffer |:map-local|
 m  *+lua*		|Lua| interface
 m  *+lua/dyn*		|Lua| interface |/dyn|
 N  *+menu*		|:menu|
+   *+messagequeue*	Compiled with thread-safe message queue.
 N  *+mksession*		|:mksession|
 N  *+modify_fname*	|filename-modifiers|
 N  *+mouse*		Mouse handling |mouse-using|

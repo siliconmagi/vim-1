@@ -6455,6 +6455,9 @@ lua			Compiled with Lua interface |Lua|.
 mac			Macintosh version of Vim.
 macunix			Macintosh version of Vim, using Unix files (OS-X).
 menu			Compiled with support for |:menu|.
+messagequeue		Compiled with a message queue that scripting languages
+			languages (python, ruby...) can use to safely call
+			vim from other threads.
 mksession		Compiled with support for |:mksession|.
 modify_fname		Compiled with file name modifiers. |filename-modifiers|
 mouse			Compiled with support mouse.

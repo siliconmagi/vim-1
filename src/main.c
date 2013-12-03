@@ -597,6 +597,11 @@ vim_main2(int argc UNUSED, char **argv UNUSED)
 # endif
 #endif
 
+#ifdef FEAT_MESSAGEQUEUE
+    /* Initialize the message queue */
+    queue_init();
+#endif
+
 #ifndef NO_VIM_MAIN
     /* Execute --cmd arguments. */
     exe_pre_commands(&params);
@@ -1043,6 +1048,10 @@ main_loop(cmdwin, noexmode)
     linenr_T	conceal_new_cursor_line = 0;
     int		conceal_update_lines = FALSE;
 #endif
+#ifdef FEAT_MESSAGEQUEUE
+    input_data_T    *id;    /* Input data read from the other thread */
+    message_T	    *msg;   /* next message */
+#endif
 
 #if defined(FEAT_X11) && defined(FEAT_XCLIPBOARD)
     /* Setup to catch a terminating error from the X server.  Just ignore
@@ -1326,7 +1335,48 @@ main_loop(cmdwin, noexmode)
 	    do_exmode(exmode_active == EXMODE_VIM);
 	}
 	else
+	{
+#ifdef FEAT_MESSAGEQUEUE
+	    /* Notify the background thread that it should read some input */
+	    input_notify();
+
+	    /* 
+	     * Wait for a message, which can be an 'UserInput' message
+	     * set by the background thread or a 'DeferredEval' message
+	     * indirectly set by vimscript.
+	     */
+	    msg = queue_shift();
+
+	    switch (msg->type)
+	    {
+	    case UserInput:
+		id = (input_data_T *)msg->data;
+
+		/* 
+		 * Trick vgetc into thinking this char was returned by
+		 * vungetc. Its hacky but avoids messing with that 
+		 * function for now.
+		 */
+		old_char = id->character;
+		old_mod_mask = id->mod_mask;
+		old_mouse_row = id->mouse_row;
+		old_mouse_col = id->mouse_col;
+
+		/* Run the normal command */
+		normal_cmd(&oa, TRUE);
+
+		/* Free memory we no longer need */
+		vim_free(msg);
+		vim_free(id);
+		break;
+	    case DeferredEval:
+		break;
+	    }
+#else
+	    /* Run the normal command */
 	    normal_cmd(&oa, TRUE);
+#endif
+	}
     }
 }
 
