@@ -33,6 +33,7 @@ SRC_ALL =	\
 		src/gui_beval.h \
 		src/hardcopy.c \
 		src/hashtab.c \
+		src/job.c \
 		src/keymap.h \
 		src/macros.h \
 		src/main.c \
@@ -113,6 +114,7 @@ SRC_ALL =	\
 		src/proto/gui_beval.pro \
 		src/proto/hardcopy.pro \
 		src/proto/hashtab.pro \
+		src/proto/job.pro \
 		src/proto/main.pro \
 		src/proto/mark.pro \
 		src/proto/mbyte.pro \

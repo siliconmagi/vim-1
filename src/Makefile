@@ -1443,6 +1443,7 @@ BASIC_SRC = \
 	hashtab.c \
 	if_cscope.c \
 	if_xcmdsrv.c \
+	job.c \
 	main.c \
 	mark.c \
 	memfile.c \
@@ -1533,6 +1534,7 @@ OBJ_COMMON = \
 	$(HANGULIN_OBJ) \
 	objects/if_cscope.o \
 	objects/if_xcmdsrv.o \
+	objects/job.o \
 	objects/mark.o \
         objects/memline.o \
 	objects/menu.o \
@@ -2624,6 +2626,9 @@ objects/if_tcl.o: if_tcl.c
 
 objects/integration.o: integration.c
 	$(CCC) -o $@ integration.c
+
+objects/job.o: job.c
+	$(CCC) -o $@ job.c
 
 objects/main.o: main.c
 	$(CCC) -o $@ main.c

@@ -209,6 +209,11 @@ static char *(features[]) =
 #else
 	"-eval",
 #endif
+#ifdef FEAT_JOB_CONTROL
+	"+job_control",
+#else
+	"-job_control",
+#endif
 #ifdef FEAT_EX_EXTRA
 	"+ex_extra",
 #else

@@ -1280,6 +1280,7 @@ enum auto_event
     EVENT_INSERTCHANGE,		/* when changing Insert/Replace mode */
     EVENT_INSERTENTER,		/* when entering Insert mode */
     EVENT_INSERTLEAVE,		/* when leaving Insert mode */
+    EVENT_JOBACTIVITY,		/* when job sent some data */
     EVENT_MENUPOPUP,		/* just before popup menu is displayed */
     EVENT_QUICKFIXCMDPOST,	/* after :make, :grep etc. */
     EVENT_QUICKFIXCMDPRE,	/* before :make, :grep etc. */
@@ -1876,7 +1877,8 @@ typedef int proftime_T;	    /* dummy for function prototypes */
 #define VV_HLSEARCH	54
 #define VV_OLDFILES	55
 #define VV_WINDOWID	56
-#define VV_LEN		57	/* number of v: vars */
+#define VV_JOB_DATA	57
+#define VV_LEN		58	/* number of v: vars */
 
 #ifdef FEAT_CLIPBOARD
 

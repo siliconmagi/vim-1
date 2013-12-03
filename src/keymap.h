@@ -267,6 +267,7 @@ enum key_extra
     , KE_NOP		/* doesn't do something */
     , KE_FOCUSGAINED	/* focus gained */
     , KE_FOCUSLOST	/* focus lost */
+    , KE_JOB_ACTIVITY	/* One or more jobs have data available */
 };
 
 /*
@@ -466,6 +467,8 @@ enum key_extra
 #define K_FOCUSLOST	TERMCAP2KEY(KS_EXTRA, KE_FOCUSLOST)
 
 #define K_CURSORHOLD	TERMCAP2KEY(KS_EXTRA, KE_CURSORHOLD)
+
+#define K_JOB_ACTIVITY	TERMCAP2KEY(KS_EXTRA, KE_JOB_ACTIVITY)
 
 /* Bits for modifier mask */
 /* 0x01 cannot be used, because the modifier must be 0x02 or higher */

@@ -1188,6 +1188,12 @@ doESCkey:
 	    break;
 #endif
 
+#ifdef FEAT_JOB_CONTROL
+	case K_JOB_ACTIVITY:
+	    job_activity_autocmds();
+	    break;
+#endif
+
 #ifdef FEAT_GUI_W32
 	    /* On Win32 ignore <M-F4>, we get it when closing the window was
 	     * cancelled. */

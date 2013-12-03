@@ -6410,6 +6410,8 @@ ebcdic			Compiled on a machine with ebcdic character set.
 emacs_tags		Compiled with support for Emacs tags.
 eval			Compiled with expression evaluation support.  Always
 			true, of course!
+job_control		Compiled with job control functions and autocommand
+			for multitasking with other processes.
 ex_extra		Compiled with extra Ex commands |+ex_extra|.
 extra_search		Compiled with support for |'incsearch'| and
 			|'hlsearch'|

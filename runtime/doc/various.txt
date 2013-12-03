@@ -324,6 +324,7 @@ N  *+digraphs*		|digraphs| *E196*
    *+dnd*		Support for DnD into the "~ register |quote_~|.
 B  *+emacs_tags*	|emacs-tags| files
 N  *+eval*		expression evaluation |eval.txt|
+   *+job_control*	Compiled with job control module
 N  *+ex_extra*		Vim's extra Ex commands: |:center|, |:left|,
 			|:normal|, |:retab| and |:right|
 N  *+extra_search*	|'hlsearch'| and |'incsearch'| options.

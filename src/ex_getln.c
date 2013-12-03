@@ -926,6 +926,11 @@ getcmdline(firstc, count, indent)
 	 */
 	switch (c)
 	{
+#ifdef FEAT_JOB_CONTROL
+	case K_JOB_ACTIVITY:
+	    job_activity_autocmds();
+	    goto cmdline_not_changed;
+#endif
 	case K_BS:
 	case Ctrl_H:
 	case K_DEL:

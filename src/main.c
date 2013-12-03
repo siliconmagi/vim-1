@@ -171,7 +171,6 @@ main
 #ifdef STARTUPTIME
     int		i;
 #endif
-
     /*
      * Do any system-specific initialisations.  These can NOT use IObuff or
      * NameBuff.  Thus emsg2() cannot be called!
@@ -1371,6 +1370,10 @@ getout(exitval)
 #endif
 
     exiting = TRUE;
+
+#ifdef FEAT_JOB_CONTROL
+    jobs_cleanup();
+#endif
 
     /* When running in Ex mode an error causes us to exit with a non-zero exit
      * code.  POSIX requires this, although it's not 100% clear from the

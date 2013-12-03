@@ -3019,7 +3019,7 @@ inchar(buf, maxlen, wait_time, tb_change_cnt)
 
 	    for (;;)
 	    {
-		len = ui_inchar(dum, DUM_LEN, 0L, 0);
+		len = io_inchar(dum, DUM_LEN, 0L, 0);
 		if (len == 0 || (len == 1 && dum[0] == 3))
 		    break;
 	    }
@@ -3036,7 +3036,7 @@ inchar(buf, maxlen, wait_time, tb_change_cnt)
 	 * Fill up to a third of the buffer, because each character may be
 	 * tripled below.
 	 */
-	len = ui_inchar(buf, maxlen / 3, wait_time, tb_change_cnt);
+	len = io_inchar(buf, maxlen / 3, wait_time, tb_change_cnt);
     }
 
     if (typebuf_changed(tb_change_cnt))
@@ -3091,13 +3091,15 @@ fix_input_buffer(buf, len, script)
 	if (p[0] == NUL || (p[0] == K_SPECIAL && !script
 #ifdef FEAT_AUTOCMD
 		    /* timeout may generate K_CURSORHOLD */
-		    && (i < 2 || p[1] != KS_EXTRA || p[2] != (int)KE_CURSORHOLD)
+		    && (i < 2 || p[1] != KS_EXTRA
+		       	|| (p[2] != (int)KE_CURSORHOLD
+			    && p[2] != (int)KE_JOB_ACTIVITY)
 #endif
 #if defined(WIN3264) && !defined(FEAT_GUI)
 		    /* Win32 console passes modifiers */
 		    && (i < 2 || p[1] != KS_MODIFIER)
 #endif
-		    ))
+		    )))
 	{
 	    mch_memmove(p + 3, p + 1, (size_t)i);
 	    p[2] = K_THIRD(p[0]);

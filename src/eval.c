@@ -361,6 +361,7 @@ static struct vimvar
     {VV_NAME("hlsearch",	 VAR_NUMBER), 0},
     {VV_NAME("oldfiles",	 VAR_LIST), 0},
     {VV_NAME("windowid",	 VAR_NUMBER), VV_RO},
+    {VV_NAME("job_data",	 VAR_LIST), 0},
 };
 
 /* shorthand */
@@ -424,7 +425,6 @@ static int dict_equal __ARGS((dict_T *d1, dict_T *d2, int ic, int recursive));
 static int tv_equal __ARGS((typval_T *tv1, typval_T *tv2, int ic, int recursive));
 static long list_find_nr __ARGS((list_T *l, long idx, int *errorp));
 static long list_idx_of_item __ARGS((list_T *l, listitem_T *item));
-static int list_append_number __ARGS((list_T *l, varnumber_T n));
 static int list_extend __ARGS((list_T	*l1, list_T *l2, listitem_T *bef));
 static int list_concat __ARGS((list_T *l1, list_T *l2, typval_T *tv));
 static list_T *list_copy __ARGS((list_T *orig, int deep, int copyID));
@@ -593,6 +593,9 @@ static void f_invert __ARGS((typval_T *argvars, typval_T *rettv));
 static void f_isdirectory __ARGS((typval_T *argvars, typval_T *rettv));
 static void f_islocked __ARGS((typval_T *argvars, typval_T *rettv));
 static void f_items __ARGS((typval_T *argvars, typval_T *rettv));
+static void f_job_start __ARGS((typval_T *argvars, typval_T *rettv));
+static void f_job_stop __ARGS((typval_T *argvars, typval_T *rettv));
+static void f_job_write __ARGS((typval_T *argvars, typval_T *rettv));
 static void f_join __ARGS((typval_T *argvars, typval_T *rettv));
 static void f_keys __ARGS((typval_T *argvars, typval_T *rettv));
 static void f_last_buffer_nr __ARGS((typval_T *argvars, typval_T *rettv));
@@ -6392,7 +6395,7 @@ list_append_string(l, str, len)
  * Append "n" to list "l".
  * Returns FAIL when out of memory.
  */
-    static int
+    int
 list_append_number(l, n)
     list_T	*l;
     varnumber_T	n;
@@ -7999,6 +8002,11 @@ static struct fst
     {"isdirectory",	1, 1, f_isdirectory},
     {"islocked",	1, 1, f_islocked},
     {"items",		1, 1, f_items},
+#ifdef FEAT_JOB_CONTROL
+    {"jobstart",	2, 3, f_job_start},
+    {"jobstop",		1, 1, f_job_stop},
+    {"jobwrite",	2, 2, f_job_write},
+#endif
     {"join",		1, 2, f_join},
     {"keys",		1, 1, f_keys},
     {"last_buffer_nr",	0, 0, f_last_buffer_nr},/* obsolete */
@@ -12261,6 +12269,9 @@ f_has(argvars, rettv)
 	"emacs_tags",
 #endif
 	"eval",	    /* always present, of course! */
+#ifdef FEAT_JOB_CONTROL
+	"job_control",
+#endif
 #ifdef FEAT_EX_EXTRA
 	"ex_extra",
 #endif
@@ -13497,6 +13508,163 @@ f_items(argvars, rettv)
 {
     dict_list(argvars, rettv, 2);
 }
+
+#ifdef FEAT_JOB_CONTROL
+/*
+ * "jobstart()" function
+ */
+    static void
+f_job_start(argvars, rettv)
+    typval_T	*argvars;
+    typval_T	*rettv;
+{
+    list_T	*args = NULL;
+    listitem_T	*arg;
+    int		i, argvl, argsl;
+    char_u	**argv = NULL;
+
+    rettv->v_type = VAR_NUMBER;
+    rettv->vval.v_number = 0;
+
+    if (check_restricted() || check_secure())
+	goto cleanup;
+
+    if (argvars[0].v_type != VAR_STRING ||
+	    argvars[1].v_type != VAR_STRING ||
+	    (argvars[2].v_type != VAR_LIST &&
+	     argvars[2].v_type != VAR_UNKNOWN))
+    {
+	EMSG(_(e_invarg));
+	goto cleanup;
+    }
+
+    argsl = 0;
+    if (argvars[2].v_type == VAR_LIST)
+    {
+	args = argvars[2].vval.v_list;
+	argsl = args->lv_len;
+	/* Assert that all list items are strings */
+	for (arg = args->lv_first; arg != NULL; arg = arg->li_next)
+	    if (arg->li_tv.v_type != VAR_STRING)
+	    {
+		EMSG(_(e_invarg));
+		goto cleanup;
+	    }
+    }
+
+    if (!mch_can_exe(get_tv_string(&argvars[1])))
+    {
+	/* String is not executable */
+	EMSG2(e_jobexe, get_tv_string(&argvars[1]));
+	goto cleanup;
+    }
+
+    /* Allocate extra memory for the argument vector and the NULL pointer */
+    argvl = argsl + 2;
+    argv = (char_u **)alloc(sizeof(char_u *) * argvl);
+    if (argv == NULL)
+	goto cleanup;
+
+    /* Initialize the array */
+    for (i = 0; i < argvl; ++i)
+	argv[i] = NULL;
+
+    /* Copy program name */
+    argv[0] = vim_strsave(argvars[1].vval.v_string);
+    if (argv[0] == NULL)
+	goto cleanup;
+
+
+    i = 1;
+    /* Copy arguments to the vector */
+    if (argsl > 0)
+	for (arg = args->lv_first; arg != NULL; arg = arg->li_next)
+	{
+	    argv[i] = vim_strsave(arg->li_tv.vval.v_string);
+	    if (argv[i++] == NULL)
+		goto cleanup;
+	}
+
+    rettv->vval.v_number =
+       	job_start(vim_strsave(argvars[0].vval.v_string), argv);
+
+    if (rettv->vval.v_number == 0)
+    {
+	EMSG(_(e_jobtblfull));
+	goto cleanup;
+    }
+
+cleanup:
+    if (rettv->vval.v_number > 0 || argv == NULL)
+	return;
+    /* Cleanup */
+    for (i = 0; i < argvl; ++i)
+	vim_free(argv[i]);
+    vim_free(argv);
+}
+
+/*
+ * "jobstop()" function
+ */
+    static void
+f_job_stop(argvars, rettv)
+    typval_T	*argvars;
+    typval_T	*rettv;
+{
+    rettv->v_type = VAR_NUMBER;
+    rettv->vval.v_number = 0;
+
+    if (check_restricted() || check_secure())
+	return;
+
+    if (argvars[0].v_type != VAR_NUMBER)
+    {
+	EMSG(_(e_invarg));
+	return;
+    }
+
+    if (job_stop(argvars[0].vval.v_number) <= 0)
+    {
+	EMSG(_(e_invjob));
+	return;
+    }
+
+    rettv->vval.v_number = 1;
+}
+
+/*
+ * "jobwrite()" function
+ */
+    static void
+f_job_write(argvars, rettv)
+    typval_T	*argvars;
+    typval_T	*rettv;
+{
+    int res;
+    rettv->v_type = VAR_NUMBER;
+    rettv->vval.v_number = 0;
+
+    if (check_restricted() || check_secure())
+	return;
+
+    if (argvars[0].v_type != VAR_NUMBER || argvars[1].v_type != VAR_STRING)
+    {
+	EMSG(_(e_invarg));
+	return;
+    }
+
+    res = job_write(argvars[0].vval.v_number, argvars[1].vval.v_string,
+		STRLEN(argvars[1].vval.v_string));
+
+    if (res <= 0)
+    {
+	if (res == -1) EMSG(_(e_invjob));
+	else EMSG(_(e_outofmem));
+    }
+
+    rettv->vval.v_number = 1;
+}
+#endif
 
 /*
  * "join()" function

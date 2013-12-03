@@ -57,6 +57,7 @@ char_u *list_find_str __ARGS((list_T *l, long idx));
 void list_append __ARGS((list_T *l, listitem_T *item));
 int list_append_tv __ARGS((list_T *l, typval_T *tv));
 int list_append_dict __ARGS((list_T *list, dict_T *dict));
+int list_append_number __ARGS((list_T *l, varnumber_T n));
 int list_append_string __ARGS((list_T *l, char_u *str, int len));
 int list_insert_tv __ARGS((list_T *l, typval_T *tv, listitem_T *item));
 void list_remove __ARGS((list_T *l, listitem_T *item, listitem_T *item2));

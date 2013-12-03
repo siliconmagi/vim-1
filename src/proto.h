@@ -133,6 +133,10 @@ int vim_vsnprintf(char *str, size_t str_m, char *fmt, va_list ap, typval_T *tvs)
 #  endif
 # endif
 
+# ifdef FEAT_JOB_CONTROL
+#  include "job.pro"
+# endif
+
 # include "message.pro"
 # include "misc1.pro"
 # include "misc2.pro"

@@ -303,3 +303,11 @@
 #  endif
 # endif
 #endif
+
+#if defined(FEAT_JOB_CONTROL)
+# define io_inchar(buf, maxlen, wtime, tb_change_cnt) \
+    job_activity_poll(buf, maxlen, wtime, tb_change_cnt)
+#else
+# define io_inchar(buf, maxlen, wtime, tb_change_cnt) \
+    ui_inchar(buf, maxlen, wtime, tb_change_cnt)
+#endif

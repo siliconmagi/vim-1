@@ -1433,6 +1433,12 @@ EXTERN char_u e_invcmd[]	INIT(= N_("E476: Invalid command"));
 #if defined(UNIX) || defined(FEAT_SYN_HL) || defined(FEAT_SPELL)
 EXTERN char_u e_isadir2[]	INIT(= N_("E17: \"%s\" is a directory"));
 #endif
+#ifdef FEAT_JOB_CONTROL
+EXTERN char_u e_invjob[]	INIT(= N_("E900: Invalid job id"));
+EXTERN char_u e_jobpollerr[]	INIT(= N_("E901: Job poll failed"));
+EXTERN char_u e_jobtblfull[]	INIT(= N_("E902: Job table is full"));
+EXTERN char_u e_jobexe[]	INIT(= N_("E902: '%s' is not an executable"));
+#endif
 #ifdef FEAT_LIBCALL
 EXTERN char_u e_libcall[]	INIT(= N_("E364: Library call failed for \"%s()\""));
 #endif
