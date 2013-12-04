@@ -9843,7 +9843,7 @@ f_defer(argvars, rettv)
     typval_T	*rettv;
 {
     rettv->v_type = VAR_UNKNOWN;
-    queue_push(DeferredEval, strdup(get_tv_string(&argvars[0])));
+    queue_push(DeferredCall, strdup(get_tv_string(&argvars[0])));
 }
 #endif
 
