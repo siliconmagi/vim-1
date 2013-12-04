@@ -16,6 +16,7 @@ typedef struct message_queue_T
 
 message_queue_T	    message_queue;
 
+int		    waiting_for_input;
 pthread_t	    input_thread;
 pthread_mutex_t	    input_mutex;
 pthread_cond_t	    input_cond;
@@ -68,6 +69,9 @@ input_wait()
     void
 input_notify()
 {
+    if (waiting_for_input)
+	return;
+
     lock(&input_mutex);
 
     if (pthread_cond_broadcast(&input_cond) != 0)
@@ -89,8 +93,13 @@ vgetcs(arg)
 
     while (TRUE)
     {
+	waiting_for_input = FALSE;
+
 	// Only try to read input when asked by the main thread
 	input_wait();
+
+	// Dont let the main thread call 'input_notify' or else it would block
+	waiting_for_input = TRUE;
 
 	// Allocate space to hold input data
 	data = (input_data_T *)alloc(sizeof(input_data_T));

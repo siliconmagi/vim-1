@@ -9,7 +9,7 @@
 #ifndef MESSAGE_QUEUE_H
 #define MESSAGE_QUEUE_H
 
-typedef enum { UserInput, DeferredEval } MessageType;
+typedef enum { UserInput, DeferredCall } MessageType;
 
 typedef struct message_T
 { 

@@ -1342,7 +1342,7 @@ main_loop(cmdwin, noexmode)
 
 	    /* 
 	     * Wait for a message, which can be an 'UserInput' message
-	     * set by the background thread or a 'DeferredEval' message
+	     * set by the background thread or a 'DeferredCall' message
 	     * indirectly set by vimscript.
 	     */
 	    msg = queue_shift();
@@ -1364,14 +1364,15 @@ main_loop(cmdwin, noexmode)
 
 		/* Run the normal command */
 		normal_cmd(&oa, TRUE);
-
-		/* Free memory we no longer need */
-		vim_free(msg);
-		vim_free(id);
 		break;
-	    case DeferredEval:
+	    case DeferredCall:
+		/* Call the defered function */
+		(void)call_func_retnr((char_u *)msg->data, 0, 0, FALSE);
 		break;
 	    }
+	    /* Free memory we no longer need */
+	    vim_free(msg->data);
+	    vim_free(msg);
 #else
 	    /* Run the normal command */
 	    normal_cmd(&oa, TRUE);
