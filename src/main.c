@@ -597,11 +597,6 @@ vim_main2(int argc UNUSED, char **argv UNUSED)
 # endif
 #endif
 
-#ifdef FEAT_MESSAGEQUEUE
-    /* Initialize the message queue */
-    queue_init();
-#endif
-
 #ifndef NO_VIM_MAIN
     /* Execute --cmd arguments. */
     exe_pre_commands(&params);
@@ -1053,6 +1048,11 @@ main_loop(cmdwin, noexmode)
     message_T	    *msg;   /* next message */
 #endif
 
+#ifdef FEAT_MESSAGEQUEUE
+    /* Initialize the message queue */
+    queue_init();
+#endif
+
 #if defined(FEAT_X11) && defined(FEAT_XCLIPBOARD)
     /* Setup to catch a terminating error from the X server.  Just ignore
      * it, restore the state and continue.  This might not always work
@@ -1368,6 +1368,9 @@ main_loop(cmdwin, noexmode)
 	    case DeferredCall:
 		/* Call the defered function */
 		(void)call_func_retnr((char_u *)msg->data, 0, 0, FALSE);
+		// force a redraw in case visible buffers were updated
+		// FIXME in terminal, cursor must also be redraw
+		redraw_later_clear();
 		break;
 	    }
 	    /* Free memory we no longer need */
