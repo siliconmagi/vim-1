@@ -798,6 +798,27 @@ VimToPython(typval_T *our_tv, int depth, PyObject *lookup_dict)
 }
 
     static PyObject *
+VimDefer(PyObject *self UNUSED, PyObject *args)
+{
+    char_u	*func;
+    PyObject	*string;
+    PyObject	*todecref;
+
+    if (!PyArg_ParseTuple(args, "O", &string))
+	return NULL;
+
+    if (!(func = StringToChars(string, &todecref)))
+	return NULL;
+
+    queue_push(DeferredCall, strdup(func));
+
+    Py_XDECREF(todecref);
+    Py_INCREF(Py_None);
+
+    return Py_None;
+}
+
+    static PyObject *
 VimEval(PyObject *self UNUSED, PyObject *args)
 {
     char_u	*expr;
@@ -1287,6 +1308,7 @@ VimPathHook(PyObject *self UNUSED, PyObject *args)
 static struct PyMethodDef VimMethods[] = {
     /* name,	    function,			calling,			documentation */
     {"command",	    VimCommand,			METH_O,				"Execute a Vim ex-mode command" },
+    {"defer",	    VimDefer,			METH_VARARGS,			"Call a vim function in the next message loop iteration" },
     {"eval",	    VimEval,			METH_VARARGS,			"Evaluate an expression using Vim evaluator" },
     {"bindeval",    VimEvalPy,			METH_O,				"Like eval(), but returns objects attached to vim ones"},
     {"strwidth",    VimStrwidth,		METH_O,				"Screen string width, counts <Tab> as having width 1"},

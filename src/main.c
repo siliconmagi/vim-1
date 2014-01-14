@@ -1046,6 +1046,7 @@ main_loop(cmdwin, noexmode)
 #ifdef FEAT_MESSAGEQUEUE
     input_data_T    *id;    /* Input data read from the other thread */
     message_T	    *msg;   /* next message */
+    typval_T	    *defer_tv;
 #endif
 
 #ifdef FEAT_MESSAGEQUEUE
@@ -1418,6 +1419,7 @@ getout(exitval)
     win_T	*wp;
     tabpage_T	*tp, *next_tp;
 #endif
+    fprintf(stderr, "exiting\n");
 
     exiting = TRUE;
 

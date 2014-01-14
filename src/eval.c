@@ -504,9 +504,6 @@ static void f_count __ARGS((typval_T *argvars, typval_T *rettv));
 static void f_cscope_connection __ARGS((typval_T *argvars, typval_T *rettv));
 static void f_cursor __ARGS((typval_T *argsvars, typval_T *rettv));
 static void f_deepcopy __ARGS((typval_T *argvars, typval_T *rettv));
-#ifdef FEAT_MESSAGEQUEUE
-static void f_defer __ARGS((typval_T *argvars, typval_T *rettv));
-#endif
 static void f_delete __ARGS((typval_T *argvars, typval_T *rettv));
 static void f_did_filetype __ARGS((typval_T *argvars, typval_T *rettv));
 static void f_diff_filler __ARGS((typval_T *argvars, typval_T *rettv));
@@ -7895,9 +7892,6 @@ static struct fst
     {"cscope_connection",0,3, f_cscope_connection},
     {"cursor",		1, 3, f_cursor},
     {"deepcopy",	1, 2, f_deepcopy},
-#ifdef FEAT_MESSAGEQUEUE
-    {"defer",		1, 1, f_defer},
-#endif
     {"delete",		1, 1, f_delete},
     {"did_filetype",	0, 0, f_did_filetype},
     {"diff_filler",	1, 1, f_diff_filler},
@@ -9832,20 +9826,6 @@ f_deepcopy(argvars, rettv)
 	item_copy(&argvars[0], rettv, TRUE, noref == 0 ? current_copyID : 0);
     }
 }
-
-#ifdef FEAT_MESSAGEQUEUE
-/*
- * "defer()" function
- */
-    static void
-f_defer(argvars, rettv)
-    typval_T	*argvars;
-    typval_T	*rettv;
-{
-    rettv->v_type = VAR_UNKNOWN;
-    queue_push(DeferredCall, strdup(get_tv_string(&argvars[0])));
-}
-#endif
 
 /*
  * "delete()" function
@@ -12375,9 +12355,6 @@ f_has(argvars, rettv)
 #endif
 #ifdef FEAT_MENU
 	"menu",
-#endif
-#ifdef FEAT_MESSAGEQUEUE
-	"messagequeue",
 #endif
 #ifdef FEAT_SESSION
 	"mksession",
