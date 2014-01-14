@@ -1,3 +1,5 @@
+if has('messagequeue')
+
 set nocompatible
 set nocursorline
 
@@ -125,3 +127,4 @@ game = Thread(target=run_game)
 game.daemon = True
 game.start()
 EOF
+endif
