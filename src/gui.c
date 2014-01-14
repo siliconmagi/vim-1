@@ -87,7 +87,7 @@ gui_start()
 
     ++recursive;
 
-#if defined(FEAT_MESSAGEQUEUE) && defined(FEAT_GUI_X11)
+#if defined(FEAT_MESSAGEQUEUE) && defined(FEAT_X11)
     if (recursive <= 1) XInitThreads();
 #endif
 

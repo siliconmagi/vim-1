@@ -171,7 +171,6 @@ main
 #ifdef STARTUPTIME
     int		i;
 #endif
-
     /*
      * Do any system-specific initialisations.  These can NOT use IObuff or
      * NameBuff.  Thus emsg2() cannot be called!

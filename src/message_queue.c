@@ -16,10 +16,12 @@ typedef struct message_queue_T
 
 message_queue_T	    message_queue;
 
-int		    waiting_for_input;
 pthread_t	    input_thread;
 pthread_mutex_t	    input_mutex;
 pthread_cond_t	    input_cond;
+
+int		    waiting_for_input;
+pthread_mutex_t	    waiting_for_input_mutex;
 
 /* 
  * FIXME: Figure out the right way to deal with such errors by asking
@@ -69,8 +71,13 @@ input_wait()
     void
 input_notify()
 {
-    if (waiting_for_input)
+    lock(&waiting_for_input_mutex);
+    if (waiting_for_input) {
+	unlock(&waiting_for_input_mutex);
 	return;
+    }
+    unlock(&waiting_for_input_mutex);
+
 
     lock(&input_mutex);
 
@@ -93,13 +100,17 @@ vgetcs(arg)
 
     while (TRUE)
     {
+	lock(&waiting_for_input_mutex);
 	waiting_for_input = FALSE;
+	unlock(&waiting_for_input_mutex);
 
 	// Only try to read input when asked by the main thread
 	input_wait();
 
 	// Dont let the main thread call 'input_notify' or else it would block
+	lock(&waiting_for_input_mutex);
 	waiting_for_input = TRUE;
+	unlock(&waiting_for_input_mutex);
 
 	// Allocate space to hold input data
 	data = (input_data_T *)alloc(sizeof(input_data_T));
@@ -139,6 +150,8 @@ queue_init()
     if (pthread_cond_init(&message_queue.cond, NULL) != 0)
 	pthread_error("Failed to init the condition");
 
+    if (pthread_mutex_init(&waiting_for_input_mutex, NULL) != 0)
+	pthread_error("Failed to init the mutex");
 
     message_queue.head = NULL;
     message_queue.tail = NULL;
