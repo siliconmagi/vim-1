@@ -1045,7 +1045,6 @@ main_loop(cmdwin, noexmode)
 #ifdef FEAT_MESSAGEQUEUE
     input_data_T    *id;    /* Input data read from the other thread */
     message_T	    *msg;   /* next message */
-    typval_T	    *defer_tv;
 #endif
 
 #ifdef FEAT_MESSAGEQUEUE
