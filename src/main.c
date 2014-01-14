@@ -1421,7 +1421,6 @@ getout(exitval)
     win_T	*wp;
     tabpage_T	*tp, *next_tp;
 #endif
-    fprintf(stderr, "exiting\n");
 
     exiting = TRUE;
 
