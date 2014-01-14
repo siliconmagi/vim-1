@@ -1369,9 +1369,11 @@ main_loop(cmdwin, noexmode)
 	    case DeferredCall:
 		/* Call the defered function */
 		(void)call_func_retnr((char_u *)msg->data, 0, 0, FALSE);
-		// force a redraw in case visible buffers were updated
-		// FIXME in terminal, cursor must also be redraw
-		redraw_later_clear();
+		/* 
+		 * Force a redraw in case the called function updated
+		 * something.
+		 */
+		shell_resized();
 		break;
 	    }
 	    /* Free memory we no longer need */
