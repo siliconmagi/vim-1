@@ -14,7 +14,7 @@ cd vim
 git checkout event-loop
 make distclean
 (cd src && make autoconf)
-./configure --enable-pythoninterp
+./configure --enable-pythoninterp --with-features=huge
 make
 ```
 
