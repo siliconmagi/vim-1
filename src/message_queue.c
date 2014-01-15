@@ -1,9 +1,9 @@
 #include <unistd.h>
+#include <pthread.h>
 #include "vim.h"
 
 #ifdef FEAT_MESSAGEQUEUE
 
-#include <pthread.h>
 
 #include "message_queue.h"
 
@@ -17,21 +17,16 @@ typedef struct message_queue_T
 
 message_queue_T	    message_queue;
 
-pthread_t	    input_thread;
-pthread_mutex_t	    input_mutex;
-pthread_cond_t	    input_cond;
-
-int		    waiting_for_input;
-pthread_mutex_t	    waiting_for_input_mutex;
+pthread_t	    char_wait_thread;
+pthread_mutex_t	    char_wait_mutex;
+pthread_cond_t	    char_wait_cond;
 
 pthread_mutex_t     io_mutex;
 
 int		    queue_initialized = FALSE;
+int		    is_polling = FALSE;
+int		    is_waiting = FALSE;
 
-/* 
- * FIXME: Figure out the right way to deal with such errors by asking
- * on the list
- */
     void
 pthread_error(const char *msg)
 {
@@ -40,35 +35,35 @@ pthread_error(const char *msg)
 }
 
 /*
- * Private helpers to used to lock/unlock the input mutex
+ * Private helpers to used to deal with pthread data
  */
     static void
 lock(pthread_mutex_t *mutex)
 {
     if (pthread_mutex_lock(mutex) != 0)
-	pthread_error("Error acquiring user input lock");
+	pthread_error("Error acquiring lock");
 }
 
     static void
 unlock(pthread_mutex_t *mutex)
 {
     if (pthread_mutex_unlock(mutex) != 0)
-	pthread_error("Error releasing user input lock");
+	pthread_error("Error releasing lock");
 }
 
-/*
- * Function used by the background thread to wait for a signal to read
- * input from the main thread
- */
     static void
-input_wait()
+wait(pthread_cond_t *cond, pthread_mutex_t *mutex)
 {
-    lock(&input_mutex);
-
-    if (pthread_cond_wait(&input_cond, &input_mutex) != 0)
-	pthread_error("Failed to wait for condition");
+    if (pthread_cond_wait(cond, mutex) != 0)
+	pthread_error("Error waiting condition");
 }
 
+    static void
+notify(pthread_cond_t *cond)
+{
+    if (pthread_cond_signal(cond) != 0)
+	pthread_error("Error signaling condition");
+}
 
 /*
  * This function will listen for user input in a separate thread, but only
@@ -80,29 +75,28 @@ vgetcs(arg)
 {
     while (TRUE)
     {
-	lock(&waiting_for_input_mutex);
-	waiting_for_input = FALSE;
-	unlock(&waiting_for_input_mutex);
+	lock(&char_wait_mutex);
+	is_waiting = TRUE;
 
-	// Only try to read input when asked by the main thread
-	input_wait();
+	/* Ready to be notified */
+	wait(&char_wait_cond, &char_wait_mutex);
 
-	// Dont let the main thread call 'input_notify' or else it would block
-	lock(&waiting_for_input_mutex);
-	waiting_for_input = TRUE;
-	unlock(&waiting_for_input_mutex);
+	is_waiting = FALSE;
+	is_polling = TRUE;
+
+	unlock(&char_wait_mutex);
 
 	while (TRUE) {
-	    input_acquire();
+	    io_lock();
 	    if (char_avail()) {
-		input_release();
+		is_polling = FALSE;
+		io_unlock();
 		break;
 	    }
-	    input_release();
+	    io_unlock();
 	    usleep(50000);
 	}
 
-	unlock(&input_mutex);
 	queue_push(UserInput, NULL);
     }
 }
@@ -116,10 +110,10 @@ queue_init()
 {
     pthread_attr_t attr;
 
-    if (pthread_mutex_init(&input_mutex, NULL) != 0)
+    if (pthread_mutex_init(&char_wait_mutex, NULL) != 0)
 	pthread_error("Failed to init the mutex");
 
-    if (pthread_cond_init(&input_cond, NULL) != 0)
+    if (pthread_cond_init(&char_wait_cond, NULL) != 0)
 	pthread_error("Failed to init the condition");
 
     if (pthread_mutex_init(&message_queue.mutex, NULL) != 0)
@@ -127,9 +121,6 @@ queue_init()
 
     if (pthread_cond_init(&message_queue.cond, NULL) != 0)
 	pthread_error("Failed to init the condition");
-
-    if (pthread_mutex_init(&waiting_for_input_mutex, NULL) != 0)
-	pthread_error("Failed to init the mutex");
 
     if (pthread_mutex_init(&io_mutex, NULL) != 0)
 	pthread_error("Failed to init the mutex");
@@ -140,29 +131,30 @@ queue_init()
     if (pthread_attr_init(&attr) != 0)
 	pthread_error("Failed to initialize the thread attribute");
 
-    if (pthread_create(&input_thread, &attr, &vgetcs, NULL) != 0)
+    if (pthread_create(&char_wait_thread, &attr, &vgetcs, NULL) != 0)
 	pthread_error("Failed to initialize the user input thread");
 }
 /*
- * Function used by the main thread to notify that it should read something
+ * Function used by the main loop to notify the background thread that it
+ * should wait for a character
  */
     void
-input_notify()
+char_wait()
 {
-    lock(&waiting_for_input_mutex);
-    if (waiting_for_input) {
-	unlock(&waiting_for_input_mutex);
+    io_lock();
+    if (is_polling) {
+	io_unlock();
 	return;
     }
-    unlock(&waiting_for_input_mutex);
+    io_unlock();
 
+    /* The following wait will ensure we dont notify without the background
+     * thread in wait state, which would result in a deadlock */
+    while (!is_waiting) usleep(50000);
 
-    lock(&input_mutex);
-
-    if (pthread_cond_broadcast(&input_cond) != 0)
-	pthread_error("Failed to acquire lock");
-
-    unlock(&input_mutex);
+    lock(&char_wait_mutex);
+    notify(&char_wait_cond);
+    unlock(&char_wait_mutex);
 }
 
 /* 
@@ -193,8 +185,8 @@ queue_push(type, data)
 	 * Queue was empty and consequently the main thread was waiting,
 	 * so wake it up to continue after the lock is released
 	 */
-	if (empty && pthread_cond_broadcast(&message_queue.cond) != 0)
-	    pthread_error("Failed to wake the main thread");
+	if (empty)
+	    notify(&message_queue.cond);
 
     } else {
 	/* 
@@ -221,13 +213,8 @@ queue_shift()
     lock(&message_queue.mutex);
 
     if (message_queue.head == NULL) {
-	/* 
-	 * Queue is empty, temporarily release the lock and wait for
-	 * more messages
-	 */
-	if (pthread_cond_wait(&message_queue.cond,
-		    &message_queue.mutex) != 0)
-	    pthread_error("Failed to wait for condition");
+	/* Queue is empty, wait for more messages */
+	wait(&message_queue.cond, &message_queue.mutex);
     }
 
     rv = message_queue.head;
@@ -240,14 +227,14 @@ queue_shift()
 
 
     void
-input_acquire()
+io_lock()
 {
     lock(&io_mutex);
 }
 
 
     void
-input_release()
+io_unlock()
 {
     unlock(&io_mutex);
 }
@@ -256,8 +243,7 @@ input_release()
     void
 queue_ensure()
 {
-    if (queue_initialized)
-	return;
+    if (queue_initialized) return;
 
     queue_init();
     queue_initialized = TRUE;

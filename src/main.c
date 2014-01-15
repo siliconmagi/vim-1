@@ -1080,6 +1080,11 @@ main_loop(cmdwin, noexmode)
     }
 #endif
 
+#ifdef FEAT_MESSAGEQUEUE
+    /* Ensure the message queue is initialized */
+    queue_ensure();
+#endif
+
     clear_oparg(&oa);
     while (!cmdwin
 #ifdef FEAT_CMDWIN
@@ -1331,11 +1336,9 @@ main_loop(cmdwin, noexmode)
 	else
 	{
 #ifdef FEAT_MESSAGEQUEUE
-	    /* Ensure the message queue is initialized */
-	    queue_ensure();
-
-	    /* Notify the background thread that it should read some input */
-	    input_notify();
+	    /* Notify the background thread that it should wait for a
+	     * character */
+	    char_wait();
 
 	    /* 
 	     * Wait for a message, which can be an 'UserInput' message
@@ -1353,13 +1356,13 @@ main_loop(cmdwin, noexmode)
 	    case DeferredCall:
 		/* Ensure no input will being checked by the
 		 * background thread */
-		input_acquire();
+		io_lock();
 		/* Call the defered function */
 		(void)call_func_retnr((char_u *)msg->data, 0, 0, FALSE);
 		/* Force a redraw in case the called function updated
 		 * something. */
 		shell_resized();
-		input_release();
+		io_unlock();
 		vim_free(msg->data);
 		break;
 	    }

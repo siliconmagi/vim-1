@@ -26,9 +26,9 @@ typedef struct input_data_T
     int mouse_col;
 } input_data_T;
 
-void input_notify();
-void input_acquire();
-void input_release();
+void char_wait();
+void io_lock();
+void io_unlock();
 void queue_ensure();
 void queue_push(MessageType, void *);
 message_T * queue_shift();
