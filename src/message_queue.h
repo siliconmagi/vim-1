@@ -27,7 +27,9 @@ typedef struct input_data_T
 } input_data_T;
 
 void input_notify();
-void queue_init();
+void input_acquire();
+void input_release();
+void queue_ensure();
 void queue_push(MessageType, void *);
 message_T * queue_shift();
 

@@ -1,3 +1,4 @@
+#include <unistd.h>
 #include "vim.h"
 
 #ifdef FEAT_MESSAGEQUEUE
@@ -22,6 +23,10 @@ pthread_cond_t	    input_cond;
 
 int		    waiting_for_input;
 pthread_mutex_t	    waiting_for_input_mutex;
+
+pthread_mutex_t     io_mutex;
+
+int		    queue_initialized = FALSE;
 
 /* 
  * FIXME: Figure out the right way to deal with such errors by asking
@@ -55,7 +60,7 @@ unlock(pthread_mutex_t *mutex)
  * Function used by the background thread to wait for a signal to read
  * input from the main thread
  */
-    void
+    static void
 input_wait()
 {
     lock(&input_mutex);
@@ -65,6 +70,79 @@ input_wait()
 }
 
 
+/*
+ * This function will listen for user input in a separate thread, but only
+ * when asked by the main thead
+ */
+    static void *
+vgetcs(arg)
+    void	*arg UNUSED; /* Unsused thread start argument */
+{
+    while (TRUE)
+    {
+	lock(&waiting_for_input_mutex);
+	waiting_for_input = FALSE;
+	unlock(&waiting_for_input_mutex);
+
+	// Only try to read input when asked by the main thread
+	input_wait();
+
+	// Dont let the main thread call 'input_notify' or else it would block
+	lock(&waiting_for_input_mutex);
+	waiting_for_input = TRUE;
+	unlock(&waiting_for_input_mutex);
+
+	while (TRUE) {
+	    input_acquire();
+	    if (char_avail()) {
+		input_release();
+		break;
+	    }
+	    input_release();
+	    usleep(50000);
+	}
+
+	unlock(&input_mutex);
+	queue_push(UserInput, NULL);
+    }
+}
+
+/*
+ * Initialize the message queue and start listening for user input in a
+ * separate thread.
+ */
+    static void
+queue_init()
+{
+    pthread_attr_t attr;
+
+    if (pthread_mutex_init(&input_mutex, NULL) != 0)
+	pthread_error("Failed to init the mutex");
+
+    if (pthread_cond_init(&input_cond, NULL) != 0)
+	pthread_error("Failed to init the condition");
+
+    if (pthread_mutex_init(&message_queue.mutex, NULL) != 0)
+	pthread_error("Failed to init the mutex");
+
+    if (pthread_cond_init(&message_queue.cond, NULL) != 0)
+	pthread_error("Failed to init the condition");
+
+    if (pthread_mutex_init(&waiting_for_input_mutex, NULL) != 0)
+	pthread_error("Failed to init the mutex");
+
+    if (pthread_mutex_init(&io_mutex, NULL) != 0)
+	pthread_error("Failed to init the mutex");
+
+    message_queue.head = NULL;
+    message_queue.tail = NULL;
+
+    if (pthread_attr_init(&attr) != 0)
+	pthread_error("Failed to initialize the thread attribute");
+
+    if (pthread_create(&input_thread, &attr, &vgetcs, NULL) != 0)
+	pthread_error("Failed to initialize the user input thread");
+}
 /*
  * Function used by the main thread to notify that it should read something
  */
@@ -85,82 +163,6 @@ input_notify()
 	pthread_error("Failed to acquire lock");
 
     unlock(&input_mutex);
-}
-
-/*
- * This function will listen for user input in a separate thread, but only
- * when asked by the main thead
- */
-    void *
-vgetcs(arg)
-    void	*arg UNUSED; /* Unsused thread start argument */
-{
-
-    input_data_T *data;
-
-    while (TRUE)
-    {
-	lock(&waiting_for_input_mutex);
-	waiting_for_input = FALSE;
-	unlock(&waiting_for_input_mutex);
-
-	// Only try to read input when asked by the main thread
-	input_wait();
-
-	// Dont let the main thread call 'input_notify' or else it would block
-	lock(&waiting_for_input_mutex);
-	waiting_for_input = TRUE;
-	unlock(&waiting_for_input_mutex);
-
-	// Allocate space to hold input data
-	data = (input_data_T *)alloc(sizeof(input_data_T));
-
-	/* The input mutex was configured to be reentrant, so we lock */
-	/* it before entering vgetc. This way we can safely */
-	/* retrieve other global variables set by it (mod_mask, mouse{row,
-	 * col}) without risking the main thread overriding them */ 
-	data->character = vgetc();
-	data->mod_mask = mod_mask;
-	data->mouse_row = mouse_row;
-	data->mouse_col = mouse_col;
-
-	unlock(&input_mutex);
-	queue_push(UserInput, data);
-    }
-}
-
-/*
- * Initialize the message queue and start listening for user input in a
- * separate thread.
- */
-    void
-queue_init()
-{
-    pthread_attr_t attr;
-
-    if (pthread_mutex_init(&input_mutex, NULL) != 0)
-	pthread_error("Failed to init the mutex");
-
-    if (pthread_cond_init(&input_cond, NULL) != 0)
-	pthread_error("Failed to init the condition");
-
-    if (pthread_mutex_init(&message_queue.mutex, NULL) != 0)
-	pthread_error("Failed to init the mutex");
-
-    if (pthread_cond_init(&message_queue.cond, NULL) != 0)
-	pthread_error("Failed to init the condition");
-
-    if (pthread_mutex_init(&waiting_for_input_mutex, NULL) != 0)
-	pthread_error("Failed to init the mutex");
-
-    message_queue.head = NULL;
-    message_queue.tail = NULL;
-
-    if (pthread_attr_init(&attr) != 0)
-	pthread_error("Failed to initialize the thread attribute");
-
-    if (pthread_create(&input_thread, &attr, &vgetcs, NULL) != 0)
-	pthread_error("Failed to initialize the user input thread");
 }
 
 /* 
@@ -234,6 +236,31 @@ queue_shift()
     unlock(&message_queue.mutex);
 
     return rv;
+}
+
+
+    void
+input_acquire()
+{
+    lock(&io_mutex);
+}
+
+
+    void
+input_release()
+{
+    unlock(&io_mutex);
+}
+
+
+    void
+queue_ensure()
+{
+    if (queue_initialized)
+	return;
+
+    queue_init();
+    queue_initialized = TRUE;
 }
 
 #endif

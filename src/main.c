@@ -1047,11 +1047,6 @@ main_loop(cmdwin, noexmode)
     message_T	    *msg;   /* next message */
 #endif
 
-#ifdef FEAT_MESSAGEQUEUE
-    /* Initialize the message queue */
-    queue_init();
-#endif
-
 #if defined(FEAT_X11) && defined(FEAT_XCLIPBOARD)
     /* Setup to catch a terminating error from the X server.  Just ignore
      * it, restore the state and continue.  This might not always work
@@ -1336,6 +1331,9 @@ main_loop(cmdwin, noexmode)
 	else
 	{
 #ifdef FEAT_MESSAGEQUEUE
+	    /* Ensure the message queue is initialized */
+	    queue_ensure();
+
 	    /* Notify the background thread that it should read some input */
 	    input_notify();
 
@@ -1349,33 +1347,23 @@ main_loop(cmdwin, noexmode)
 	    switch (msg->type)
 	    {
 	    case UserInput:
-		id = (input_data_T *)msg->data;
-
-		/* 
-		 * Trick vgetc into thinking this char was returned by
-		 * vungetc. Its hacky but avoids messing with that 
-		 * function for now.
-		 */
-		old_char = id->character;
-		old_mod_mask = id->mod_mask;
-		old_mouse_row = id->mouse_row;
-		old_mouse_col = id->mouse_col;
-
 		/* Run the normal command */
 		normal_cmd(&oa, TRUE);
 		break;
 	    case DeferredCall:
+		/* Ensure no input will being checked by the
+		 * background thread */
+		input_acquire();
 		/* Call the defered function */
 		(void)call_func_retnr((char_u *)msg->data, 0, 0, FALSE);
-		/* 
-		 * Force a redraw in case the called function updated
-		 * something.
-		 */
+		/* Force a redraw in case the called function updated
+		 * something. */
 		shell_resized();
+		input_release();
+		vim_free(msg->data);
 		break;
 	    }
 	    /* Free memory we no longer need */
-	    vim_free(msg->data);
 	    vim_free(msg);
 #else
 	    /* Run the normal command */

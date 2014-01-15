@@ -82,8 +82,6 @@ EXTERN int	screen_Columns INIT(= 0);   /* actual size of ScreenLines[] */
  * held down based on the MOD_MASK_* symbols that are read first.
  */
 EXTERN int	mod_mask INIT(= 0x0);		/* current key modifiers */
-EXTERN int	old_mod_mask;	/* mod_mask for ungotten character */
-EXTERN int	old_char;	/* ungotten character */
 
 /*
  * Cmdline_row is the row where the command line starts, just below the
@@ -396,8 +394,6 @@ EXTERN buf_T	*au_new_curbuf INIT(= NULL);
  */
 EXTERN int	mouse_row;
 EXTERN int	mouse_col;
-EXTERN int	old_mouse_row;	/* mouse_row related to old_char */
-EXTERN int	old_mouse_col;	/* mouse_col related to old_char */
 
 EXTERN int	mouse_past_bottom INIT(= FALSE);/* mouse below last line */
 EXTERN int	mouse_past_eol INIT(= FALSE);	/* mouse right of line */
