@@ -394,7 +394,6 @@ EXTERN buf_T	*au_new_curbuf INIT(= NULL);
  */
 EXTERN int	mouse_row;
 EXTERN int	mouse_col;
-
 EXTERN int	mouse_past_bottom INIT(= FALSE);/* mouse below last line */
 EXTERN int	mouse_past_eol INIT(= FALSE);	/* mouse right of line */
 EXTERN int	mouse_dragging INIT(= 0);	/* extending Visual area with
