@@ -1,9 +1,17 @@
-#ifdef FEAT_MESSAGEQUEUE
+/* vi:set ts=8 sts=4 sw=4:
+ *
+ * VIM - Vi IMproved	by Bram Moolenaar
+ *
+ * Do ":help uganda"  in Vim to read copying and usage conditions.
+ * Do ":help credits" in Vim to see a list of people who contributed.
+ */
 
+#include "vim.h"
+
+#ifdef FEAT_MESSAGEQUEUE
 #include <unistd.h>
 #include <pthread.h>
 
-#include "vim.h"
 #include "message_queue.h"
 
 typedef enum { UserInput, DeferredCall } MessageType;
@@ -34,8 +42,6 @@ pthread_mutex_t     io_mutex;
 int		    queue_initialized = FALSE;
 int		    is_polling = FALSE;
 int		    is_waiting = FALSE;
-
-
     static void
 pthread_error(const char *msg)
 {

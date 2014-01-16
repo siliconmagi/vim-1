@@ -9,8 +9,8 @@
 #ifndef MESSAGE_QUEUE_H
 #define MESSAGE_QUEUE_H
 
-
 void message_loop();
 void message_loop_call(char *);
 
 #endif
+
