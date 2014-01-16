@@ -1,9 +1,9 @@
-#include <unistd.h>
-#include <pthread.h>
-#include "vim.h"
-
 #ifdef FEAT_MESSAGEQUEUE
 
+#include <unistd.h>
+#include <pthread.h>
+
+#include "vim.h"
 #include "message_queue.h"
 
 typedef enum { UserInput, DeferredCall } MessageType;
