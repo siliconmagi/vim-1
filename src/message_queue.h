@@ -9,28 +9,8 @@
 #ifndef MESSAGE_QUEUE_H
 #define MESSAGE_QUEUE_H
 
-typedef enum { UserInput, DeferredCall } MessageType;
 
-typedef struct message_T
-{ 
-  struct message_T * next;
-  MessageType type;
-  void *data;
-} message_T;
-
-typedef struct input_data_T
-{
-    int character;
-    int mod_mask;
-    int mouse_row;
-    int mouse_col;
-} input_data_T;
-
-void char_wait();
-void io_lock();
-void io_unlock();
-void queue_ensure();
-void queue_push(MessageType, void *);
-message_T * queue_shift();
+void message_loop();
+void message_loop_call(char *);
 
 #endif

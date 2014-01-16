@@ -810,7 +810,7 @@ VimDefer(PyObject *self UNUSED, PyObject *args)
     if (!(func = StringToChars(string, &todecref)))
 	return NULL;
 
-    queue_push(DeferredCall, strdup(func));
+    message_loop_call(strdup(func));
 
     Py_XDECREF(todecref);
     Py_INCREF(Py_None);

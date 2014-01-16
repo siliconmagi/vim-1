@@ -94,12 +94,12 @@ EOF
 endfunction
 
 function End()
-unmap k
-unmap j
-unmap h
-unmap l
-unmap i
-unmap <space>
+unmap <buffer> k
+unmap <buffer> j
+unmap <buffer> h
+unmap <buffer> l
+unmap <buffer> i
+unmap <buffer> <space>
 python << EOF
 buf[:] = None
 buf.append("Score - " + str(score))
@@ -115,12 +115,12 @@ lock.release()
 EOF
 endfunction
 
-nnoremap k :call KeyPress('up')<cr>
-nnoremap j :call KeyPress('down')<cr>
-nnoremap h :call KeyPress('left')<cr>
-nnoremap l :call KeyPress('right')<cr>
-nnoremap i :call KeyPress('esc')<cr>
-nnoremap <space> :call KeyPress('space')<cr>
+nnoremap <buffer> k :call KeyPress('up')<cr>
+nnoremap <buffer> j :call KeyPress('down')<cr>
+nnoremap <buffer> h :call KeyPress('left')<cr>
+nnoremap <buffer> l :call KeyPress('right')<cr>
+nnoremap <buffer> i :call KeyPress('esc')<cr>
+nnoremap <buffer> <space> :call KeyPress('space')<cr>
 
 python << EOF
 game = Thread(target=run_game)
