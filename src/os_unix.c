@@ -4535,7 +4535,7 @@ mch_call_shell(cmd, options)
 # if defined(HAVE_GETTIMEOFDAY) && defined(HAVE_SYS_TIME_H)
 			  gettimeofday(&start_tv, NULL);
 # endif
-			  len = ui_inchar(ta_buf, BUFLEN, 10L, 0);
+			  len = io_inchar(ta_buf, BUFLEN, 10L, 0);
 		      }
 		      if (ta_len > 0 || len > 0)
 		      {

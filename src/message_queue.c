@@ -9,10 +9,9 @@
 #include "vim.h"
 
 #ifdef FEAT_MESSAGEQUEUE
-#include <unistd.h>
+#include <stdlib.h>
+#include <time.h>
 #include <pthread.h>
-
-#include "message_queue.h"
 
 typedef enum { UserInput, DeferredCall } MessageType;
 
@@ -37,15 +36,28 @@ pthread_t	    char_wait_thread;
 pthread_mutex_t	    char_wait_mutex;
 pthread_cond_t	    char_wait_cond;
 
+pthread_mutex_t	    sleep_mutex;
+pthread_cond_t	    sleep_cond;
+
+/* global lock that must be held by any thread that will call or return
+ * control to vim */ 
 pthread_mutex_t     io_mutex;
 
 int		    queue_initialized = FALSE;
 int		    is_polling = FALSE;
 int		    is_waiting = FALSE;
+
+/* Current values for ui_inchar */
+char_u		    *cur_buf;
+int		    cur_maxlen;
+long		    cur_wtime;
+int		    cur_tb_change_cnt;
+int		    cur_len;
+
     static void
 pthread_error(const char *msg)
 {
-    fprintf(stderr, "%s\n", msg);
+    fprintf(stderr, "\n%s\n", msg);
     mch_exit(EXIT_FAILURE);
 }
 
@@ -74,6 +86,43 @@ wait(pthread_cond_t *cond, pthread_mutex_t *mutex)
 {
     if (pthread_cond_wait(cond, mutex) != 0)
 	pthread_error("Error waiting condition");
+}
+
+
+    static int
+timedwait(pthread_cond_t *cond, pthread_mutex_t *mutex, long ms)
+{
+    struct timespec ts;
+    struct timeval  tv;
+    int		    result;
+
+    gettimeofday(&tv, NULL);
+
+    ts.tv_sec = tv.tv_sec + (ms / 1000);
+    ts.tv_nsec = (1000 * tv.tv_usec) + ((ms % 1000) * 1000000);
+
+    result = pthread_cond_timedwait(cond, mutex, &ts);
+
+    switch (result)
+    {
+	case ETIMEDOUT:
+	    return FALSE;
+	case EINVAL:
+	    pthread_error("Value specified by abstime is invalid");
+	case EPERM:
+	    pthread_error("Doesn't own the mutex");
+	default:
+	    pthread_error("Unknown error waiting condition");
+    }
+
+    return TRUE;
+}
+
+
+    static void
+pthread_sleep(long ms)
+{
+    timedwait(&sleep_cond, &sleep_mutex, ms);
 }
 
 
@@ -135,19 +184,26 @@ queue_push(type, data)
 
 /* Take a message from the beginning of the queue */
     static message_T *
-queue_shift()
+queue_shift(long ms)
 {
-    message_T *rv;
+    int		wait_result = TRUE;
+    message_T	*rv = NULL;
 
     lock(&message_queue.mutex);
 
     if (message_queue.head == NULL) {
 	/* Queue is empty, wait for more messages */
-	wait(&message_queue.cond, &message_queue.mutex);
+	if (ms >= 0)
+	    wait_result = timedwait(&message_queue.cond, &message_queue.mutex, ms);
+	else
+	    wait(&message_queue.cond, &message_queue.mutex);
     }
 
-    rv = message_queue.head;
-    message_queue.head = rv->next;
+    if (wait_result)
+    {
+	rv = message_queue.head;
+	message_queue.head = rv->next;
+    }
 
     unlock(&message_queue.mutex);
 
@@ -155,16 +211,18 @@ queue_shift()
 }
 
 
-/*
- * This function will listen for user input in a separate thread, but only
+/* Listen for user input in a separate thread, but only
  * when asked by the main thead
  */
     static void *
 vgetcs(arg)
     void	*arg UNUSED; /* Unsused thread start argument */
 {
+    int avail;
+
     while (TRUE)
     {
+	avail = FALSE;
 	lock(&char_wait_mutex);
 	is_waiting = TRUE;
 
@@ -176,18 +234,24 @@ vgetcs(arg)
 
 	unlock(&char_wait_mutex);
 
-	while (TRUE) {
+	/* Since this function potentially modifies state(eg: update screen)
+	 * we need to synchronize with the main thread.
+	 *
+	 * This means we must use a timeout to periodically unlock the
+	 * io mutex */
+	while (!avail)
+	{
 	    lock(&io_mutex);
-	    if (char_avail()) {
+	    cur_len = ui_inchar(cur_buf, cur_maxlen, 100, cur_tb_change_cnt);
+	    if (cur_len > 0)
+	    {
 		is_polling = FALSE;
-		unlock(&io_mutex);
-		break;
+		avail = TRUE;
+		queue_push(UserInput, NULL);
 	    }
 	    unlock(&io_mutex);
-	    usleep(50000);
 	}
 
-	queue_push(UserInput, NULL);
     }
 }
 
@@ -207,6 +271,12 @@ queue_init()
     if (pthread_cond_init(&char_wait_cond, NULL) != 0)
 	pthread_error("Failed to init the condition");
 
+    if (pthread_mutex_init(&sleep_mutex, NULL) != 0)
+	pthread_error("Failed to init the mutex");
+
+    if (pthread_cond_init(&sleep_cond, NULL) != 0)
+	pthread_error("Failed to init the condition");
+
     if (pthread_mutex_init(&message_queue.mutex, NULL) != 0)
 	pthread_error("Failed to init the mutex");
 
@@ -215,6 +285,9 @@ queue_init()
 
     if (pthread_mutex_init(&io_mutex, NULL) != 0)
 	pthread_error("Failed to init the mutex");
+
+    /* This will be held by the main thread most of the time */
+    lock(&io_mutex);
 
     message_queue.head = NULL;
     message_queue.tail = NULL;
@@ -232,7 +305,6 @@ queue_init()
     static void
 char_wait()
 {
-    lock(&io_mutex);
     if (is_polling) {
 	unlock(&io_mutex);
 	return;
@@ -241,7 +313,7 @@ char_wait()
 
     /* The following wait will ensure we dont notify without the background
      * thread in wait state, which would result in a deadlock */
-    while (!is_waiting) usleep(50000);
+    while (!is_waiting) pthread_sleep(100);
 
     lock(&char_wait_mutex);
     notify(&char_wait_cond);
@@ -249,8 +321,12 @@ char_wait()
 }
 
 
-    void
-message_loop()
+    int
+msg_inchar(buf, maxlen, wtime, tb_change_cnt)
+    char_u	*buf;
+    int		maxlen;
+    long	wtime;
+    int		tb_change_cnt;
 {
     message_T	*msg;
     MessageType type;
@@ -261,6 +337,13 @@ message_loop()
 	queue_init();
 	queue_initialized = TRUE;
     }
+
+    if (wtime == 0) /* This would not block, so just call it directly */
+	return ui_inchar(buf, maxlen, wtime, tb_change_cnt);
+
+    cur_buf = buf;
+    cur_maxlen = maxlen;
+    cur_tb_change_cnt = tb_change_cnt;
 
     /* Notify the background thread that it should wait for a
      * character */
@@ -273,29 +356,25 @@ message_loop()
 	 * set by the background thread or a 'DeferredCall' message
 	 * indirectly set by vimscript.
 	 */
-	msg = queue_shift();
+	msg = queue_shift(wtime);
+	lock(&io_mutex); /* Lock io since we are returning control */
+
+	if (!msg) return 0;
+
 	type = msg->type;
 	data = msg->data;
 	vim_free(msg);
 
-	switch (msg->type)
+	switch (type)
 	{
 	    case UserInput:
-		return;
+		return cur_len;
 	    case DeferredCall:
-		/* Ensure no input will being checked by the
-		 * background thread */
-		lock(&io_mutex);
-		/* Call the defered function */
-		(void)call_func_retnr((char_u *)data, 0, 0, FALSE);
-		/* Force a redraw in case the called function updated
-		 * something. */
-		shell_resized();
-		unlock(&io_mutex);
-		vim_free(data);
 		break;
 	}
     }
+
+    return 0;
 }
 
 

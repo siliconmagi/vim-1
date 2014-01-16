@@ -9,6 +9,8 @@ def create_flags():
         '-std=c89',
         '-x',
         'c',
+        '-isystem',
+        '/usr/include',
         '-iquote',
         'proto'
     ]

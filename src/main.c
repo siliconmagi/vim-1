@@ -1325,13 +1325,7 @@ main_loop(cmdwin, noexmode)
 	    do_exmode(exmode_active == EXMODE_VIM);
 	}
 	else
-	{
-#ifdef FEAT_MESSAGEQUEUE
-	    message_loop();
-#endif
-	    /* Run the normal command */
 	    normal_cmd(&oa, TRUE);
-	}
     }
 }
 

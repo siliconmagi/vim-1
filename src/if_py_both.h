@@ -797,6 +797,7 @@ VimToPython(typval_T *our_tv, int depth, PyObject *lookup_dict)
     return ret;
 }
 
+#ifdef FEAT_MESSAGEQUEUE
     static PyObject *
 VimDefer(PyObject *self UNUSED, PyObject *args)
 {
@@ -817,6 +818,7 @@ VimDefer(PyObject *self UNUSED, PyObject *args)
 
     return Py_None;
 }
+#endif
 
     static PyObject *
 VimEval(PyObject *self UNUSED, PyObject *args)
@@ -1308,7 +1310,9 @@ VimPathHook(PyObject *self UNUSED, PyObject *args)
 static struct PyMethodDef VimMethods[] = {
     /* name,	    function,			calling,			documentation */
     {"command",	    VimCommand,			METH_O,				"Execute a Vim ex-mode command" },
+#ifdef FEAT_MESSAGEQUEUE
     {"defer",	    VimDefer,			METH_VARARGS,			"Call a vim function in the next message loop iteration" },
+#endif
     {"eval",	    VimEval,			METH_VARARGS,			"Evaluate an expression using Vim evaluator" },
     {"bindeval",    VimEvalPy,			METH_O,				"Like eval(), but returns objects attached to vim ones"},
     {"strwidth",    VimStrwidth,		METH_O,				"Screen string width, counts <Tab> as having width 1"},

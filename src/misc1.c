@@ -3378,7 +3378,7 @@ get_keystroke()
 
 	/* First time: blocking wait.  Second time: wait up to 100ms for a
 	 * terminal code to complete. */
-	n = ui_inchar(buf + len, maxlen, len == 0 ? -1L : 100L, 0);
+	n = io_inchar(buf + len, maxlen, len == 0 ? -1L : 100L, 0);
 	if (n > 0)
 	{
 	    /* Replace zero and CSI by a special key code. */
