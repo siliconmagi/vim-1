@@ -44,8 +44,6 @@ pthread_cond_t	    sleep_cond;
 pthread_mutex_t     io_mutex;
 
 int		    queue_initialized = FALSE;
-int		    is_polling = FALSE;
-int		    is_waiting = FALSE;
 
 /* Current values for ui_inchar */
 char_u		    *cur_buf;
@@ -82,7 +80,7 @@ unlock(pthread_mutex_t *mutex)
 
 
     static void
-wait(pthread_cond_t *cond, pthread_mutex_t *mutex)
+cond_wait(pthread_cond_t *cond, pthread_mutex_t *mutex)
 {
     if (pthread_cond_wait(cond, mutex) != 0)
 	pthread_error("Error waiting condition");
@@ -93,13 +91,12 @@ wait(pthread_cond_t *cond, pthread_mutex_t *mutex)
 timedwait(pthread_cond_t *cond, pthread_mutex_t *mutex, long ms)
 {
     struct timespec ts;
-    struct timeval  tv;
     int		    result;
 
-    gettimeofday(&tv, NULL);
+    clock_gettime(CLOCK_MONOTONIC, &ts);
 
-    ts.tv_sec = tv.tv_sec + (ms / 1000);
-    ts.tv_nsec = (1000 * tv.tv_usec) + ((ms % 1000) * 1000000);
+    ts.tv_sec += ms / 1000;
+    ts.tv_nsec += (ms % 1000) * 1000000;
 
     result = pthread_cond_timedwait(cond, mutex, &ts);
 
@@ -127,7 +124,7 @@ pthread_sleep(long ms)
 
 
     static void
-notify(pthread_cond_t *cond)
+cond_notify(pthread_cond_t *cond)
 {
     if (pthread_cond_signal(cond) != 0)
 	pthread_error("Error signaling condition");
@@ -163,7 +160,7 @@ queue_push(type, data)
 	 * so wake it up to continue after the lock is released
 	 */
 	if (empty)
-	    notify(&message_queue.cond);
+	    cond_notify(&message_queue.cond);
 
     } else {
 	/* 
@@ -192,11 +189,11 @@ queue_shift(long ms)
     lock(&message_queue.mutex);
 
     if (message_queue.head == NULL) {
-	/* Queue is empty, wait for more messages */
+	/* Queue is empty, cond_wait for more messages */
 	if (ms >= 0)
 	    wait_result = timedwait(&message_queue.cond, &message_queue.mutex, ms);
 	else
-	    wait(&message_queue.cond, &message_queue.mutex);
+	    cond_wait(&message_queue.cond, &message_queue.mutex);
     }
 
     if (wait_result)
@@ -210,7 +207,6 @@ queue_shift(long ms)
     return rv;
 }
 
-
 /* Listen for user input in a separate thread, but only
  * when asked by the main thead
  */
@@ -218,40 +214,27 @@ queue_shift(long ms)
 vgetcs(arg)
     void	*arg UNUSED; /* Unsused thread start argument */
 {
-    int avail;
-
     while (TRUE)
     {
-	avail = FALSE;
-	lock(&char_wait_mutex);
-	is_waiting = TRUE;
-
-	/* Ready to be notified */
-	wait(&char_wait_cond, &char_wait_mutex);
-
-	is_waiting = FALSE;
-	is_polling = TRUE;
-
-	unlock(&char_wait_mutex);
-
 	/* Since this function potentially modifies state(eg: update screen)
-	 * we need to synchronize with the main thread.
+	 * we need to synchronize io with the main thread.
 	 *
 	 * This means we must use a timeout to periodically unlock the
-	 * io mutex */
-	while (!avail)
+	 * io mutex so the main thread can continue to process other
+	 * events */
+	while (TRUE)
 	{
 	    lock(&io_mutex);
 	    cur_len = ui_inchar(cur_buf, cur_maxlen, 100, cur_tb_change_cnt);
 	    if (cur_len > 0)
-	    {
-		is_polling = FALSE;
-		avail = TRUE;
-		queue_push(UserInput, NULL);
-	    }
+		break;
 	    unlock(&io_mutex);
 	}
-
+	queue_push(UserInput, NULL);
+	lock(&char_wait_mutex);
+	unlock(&io_mutex);
+	cond_wait(&char_wait_cond, &char_wait_mutex);
+	unlock(&char_wait_mutex);
     }
 }
 
@@ -264,23 +247,30 @@ vgetcs(arg)
 queue_init()
 {
     pthread_attr_t attr;
+    pthread_condattr_t condattr;
+
+    if (pthread_condattr_init(&condattr) != 0)
+	pthread_error("Failed to init condattr");
+
+    if (pthread_condattr_setclock(&condattr, CLOCK_MONOTONIC) != 0)
+	pthread_error("Failed to init condattr");
 
     if (pthread_mutex_init(&char_wait_mutex, NULL) != 0)
 	pthread_error("Failed to init the mutex");
 
-    if (pthread_cond_init(&char_wait_cond, NULL) != 0)
+    if (pthread_cond_init(&char_wait_cond, &condattr) != 0)
 	pthread_error("Failed to init the condition");
 
     if (pthread_mutex_init(&sleep_mutex, NULL) != 0)
 	pthread_error("Failed to init the mutex");
 
-    if (pthread_cond_init(&sleep_cond, NULL) != 0)
+    if (pthread_cond_init(&sleep_cond, &condattr) != 0)
 	pthread_error("Failed to init the condition");
 
     if (pthread_mutex_init(&message_queue.mutex, NULL) != 0)
 	pthread_error("Failed to init the mutex");
 
-    if (pthread_cond_init(&message_queue.cond, NULL) != 0)
+    if (pthread_cond_init(&message_queue.cond, &condattr) != 0)
 	pthread_error("Failed to init the condition");
 
     if (pthread_mutex_init(&io_mutex, NULL) != 0)
@@ -299,30 +289,8 @@ queue_init()
 	pthread_error("Failed to initialize the user input thread");
 }
 
-
-/* Notify the background thread that it should wait for a character and
- * then send a message */
-    static void
-char_wait()
-{
-    if (is_polling) {
-	unlock(&io_mutex);
-	return;
-    }
-    unlock(&io_mutex);
-
-    /* The following wait will ensure we dont notify without the background
-     * thread in wait state, which would result in a deadlock */
-    while (!is_waiting) pthread_sleep(100);
-
-    lock(&char_wait_mutex);
-    notify(&char_wait_cond);
-    unlock(&char_wait_mutex);
-}
-
-
     int
-msg_inchar(buf, maxlen, wtime, tb_change_cnt)
+ev_inchar(buf, maxlen, wtime, tb_change_cnt)
     char_u	*buf;
     int		maxlen;
     long	wtime;
@@ -345,34 +313,21 @@ msg_inchar(buf, maxlen, wtime, tb_change_cnt)
     cur_maxlen = maxlen;
     cur_tb_change_cnt = tb_change_cnt;
 
-    /* Notify the background thread that it should wait for a
-     * character */
-    char_wait();
+    unlock(&io_mutex);
+    msg = queue_shift(wtime);
+    lock(&io_mutex); /* Lock io since we are returning to vim */
+    lock(&char_wait_mutex);
+    cond_notify(&char_wait_cond);
+    unlock(&char_wait_mutex);
 
-    while (TRUE)
-    {
-	/* 
-	 * Wait for a message, which can be an 'UserInput' message
-	 * set by the background thread or a 'DeferredCall' message
-	 * indirectly set by vimscript.
-	 */
-	msg = queue_shift(wtime);
-	lock(&io_mutex); /* Lock io since we are returning control */
+    if (!msg) return 0;
 
-	if (!msg) return 0;
+    type = msg->type;
+    data = msg->data;
+    vim_free(msg);
 
-	type = msg->type;
-	data = msg->data;
-	vim_free(msg);
-
-	switch (type)
-	{
-	    case UserInput:
-		return cur_len;
-	    case DeferredCall:
-		break;
-	}
-    }
+    if (type == UserInput)
+	return cur_len;
 
     return 0;
 }
