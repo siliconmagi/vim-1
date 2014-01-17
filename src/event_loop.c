@@ -13,13 +13,15 @@
 #include <time.h>
 #include <pthread.h>
 
-typedef enum { UserInput, Custom } EventType;
+typedef enum { Input, Custom } EventType;
 
 typedef struct ev_T
 { 
     struct ev_T * next;
     EventType type;
-    void *data;
+    struct event_data {
+	char_u *event, *event_args;
+    } *data;
 } ev_T;
 
 typedef struct event_queue_T
@@ -32,12 +34,10 @@ typedef struct event_queue_T
 
 event_queue_T	    event_queue;
 
-pthread_t	    char_wait_thread;
-pthread_mutex_t	    char_wait_mutex;
-pthread_cond_t	    char_wait_cond;
+pthread_t	    background_thread;
 
-pthread_mutex_t	    sleep_mutex;
-pthread_cond_t	    sleep_cond;
+pthread_mutex_t	    semaph_mutex;
+pthread_cond_t	    semaph_cond;
 
 /* global lock that must be held by any thread that will call or return
  * control to vim */ 
@@ -87,16 +87,21 @@ cond_wait(pthread_cond_t *cond, pthread_mutex_t *mutex)
 }
 
 
+#define SECOND 1000000000
+#define MILLISECOND 1000000
+
     static int
 timedwait(pthread_cond_t *cond, pthread_mutex_t *mutex, long ms)
 {
-    struct timespec ts;
-    int		    result;
+    struct  timespec ts;
+    int	    result;
+    long    extra_secs = ms / 1000, extra_nsecs = (ms % 1000) * MILLISECOND;
 
     clock_gettime(CLOCK_MONOTONIC, &ts);
 
-    ts.tv_sec += ms / 1000;
-    ts.tv_nsec += (ms % 1000) * 1000000;
+    ts.tv_sec += extra_secs + (
+	    extra_nsecs > SECOND ? (extra_nsecs / SECOND) : 0);
+    ts.tv_nsec += extra_nsecs % SECOND;
 
     result = pthread_cond_timedwait(cond, mutex, &ts);
 
@@ -108,18 +113,12 @@ timedwait(pthread_cond_t *cond, pthread_mutex_t *mutex, long ms)
 	    pthread_error("Value specified by abstime is invalid");
 	case EPERM:
 	    pthread_error("Doesn't own the mutex");
-	default:
-	    pthread_error("Unknown error waiting condition");
     }
 
-    return TRUE;
-}
+    if (result == 0)
+	return TRUE;
 
-
-    static void
-pthread_sleep(long ms)
-{
-    timedwait(&sleep_cond, &sleep_mutex, ms);
+    pthread_error("Unknown error waiting condition");
 }
 
 
@@ -132,18 +131,18 @@ cond_notify(pthread_cond_t *cond)
 
 
 /* 
- * Insert a message at the end of the queue.
+ * Insert a event at the end of the queue.
  */
     static void
 queue_push(type, data)
-    EventType	    type;    /* Type of message */
-    void	    *data;   /* Data associated with the message */
+    EventType		type;    /* Event type */
+    struct event_data	*data;   /* Event data */
 {
     int empty;
-    ev_T *msg = (ev_T *)alloc(sizeof(ev_T));
-    msg->type = type;
-    msg->data = data;
-    msg->next = NULL;
+    ev_T *ev = (ev_T *)alloc(sizeof(ev_T));
+    ev->type = type;
+    ev->data = data;
+    ev->next = NULL;
 
     /* Acquire queue lock */
     lock(&event_queue.mutex);
@@ -151,9 +150,9 @@ queue_push(type, data)
     empty = event_queue.head == NULL;
 
     if (empty) {
-	/* Put the message at the beginning for immediate consumption */
-	msg->next = event_queue.head;
-	event_queue.head = msg;
+	/* Put the event at the beginning for immediate consumption */
+	ev->next = event_queue.head;
+	event_queue.head = ev;
 
 	/*
 	 * Queue was empty and consequently the main thread was waiting,
@@ -164,22 +163,22 @@ queue_push(type, data)
 
     } else {
 	/* 
-	 * There are pending messages, put this one at the end, adjusting the
+	 * There are pending events, put this one at the end, adjusting the
 	 * next pointer.
 	 */
 	if (event_queue.tail == NULL) {
-	    event_queue.head->next = msg;
+	    event_queue.head->next = ev;
 	} else {
-	    event_queue.tail->next = msg;
+	    event_queue.tail->next = ev;
 	}
-	event_queue.tail = msg;
+	event_queue.tail = ev;
     }
 
     unlock(&event_queue.mutex);
 }
 
 
-/* Take a message from the beginning of the queue */
+/* Take an event from the beginning of the queue */
     static ev_T *
 queue_shift(long ms)
 {
@@ -189,7 +188,7 @@ queue_shift(long ms)
     lock(&event_queue.mutex);
 
     if (event_queue.head == NULL) {
-	/* Queue is empty, cond_wait for more messages */
+	/* Queue is empty, wait for more */
 	if (ms >= 0)
 	    wait_result = timedwait(&event_queue.cond, &event_queue.mutex, ms);
 	else
@@ -214,33 +213,37 @@ queue_shift(long ms)
 inchar_loop(arg)
     void	*arg UNUSED; /* Unsused thread start argument */
 {
+    long wt;
+
     while (TRUE)
     {
 	/* Since this function potentially modifies state(eg: update screen)
-	 * we need to synchronize io with the main thread.
+	 * we need to synchronize its access with the main thread.
 	 *
 	 * This means we must use a timeout to periodically unlock the
 	 * io mutex so the main thread can continue to process other
 	 * events */
 	while (TRUE)
 	{
+	    /* Wait for at most 100 ms */
 	    lock(&io_mutex);
-	    cur_len = ui_inchar(cur_buf, cur_maxlen, 100, cur_tb_change_cnt);
+	    wt = cur_wtime >= 100 ? 100 : cur_wtime;
+	    cur_len = ui_inchar(cur_buf, cur_maxlen, wt, cur_tb_change_cnt);
 	    if (cur_len > 0)
 		break;
 	    unlock(&io_mutex);
 	}
-	queue_push(UserInput, NULL);
-	lock(&char_wait_mutex);
+	queue_push(Input, NULL);
+	lock(&semaph_mutex);
 	unlock(&io_mutex);
-	cond_wait(&char_wait_cond, &char_wait_mutex);
-	unlock(&char_wait_mutex);
+	cond_wait(&semaph_cond, &semaph_mutex);
+	unlock(&semaph_mutex);
     }
 }
 
 
 /*
- * Initialize the message queue and start listening for user input in a
+ * Initialize the event queue and start listening for user input in a
  * separate thread.
  */
     static void
@@ -255,16 +258,10 @@ queue_init()
     if (pthread_condattr_setclock(&condattr, CLOCK_MONOTONIC) != 0)
 	pthread_error("Failed to init condattr");
 
-    if (pthread_mutex_init(&char_wait_mutex, NULL) != 0)
+    if (pthread_mutex_init(&semaph_mutex, NULL) != 0)
 	pthread_error("Failed to init the mutex");
 
-    if (pthread_cond_init(&char_wait_cond, &condattr) != 0)
-	pthread_error("Failed to init the condition");
-
-    if (pthread_mutex_init(&sleep_mutex, NULL) != 0)
-	pthread_error("Failed to init the mutex");
-
-    if (pthread_cond_init(&sleep_cond, &condattr) != 0)
+    if (pthread_cond_init(&semaph_cond, &condattr) != 0)
 	pthread_error("Failed to init the condition");
 
     if (pthread_mutex_init(&event_queue.mutex, NULL) != 0)
@@ -285,19 +282,19 @@ queue_init()
     if (pthread_attr_init(&attr) != 0)
 	pthread_error("Failed to initialize the thread attribute");
 
-    if (pthread_create(&char_wait_thread, &attr, &inchar_loop, NULL) != 0)
+    if (pthread_create(&background_thread, &attr, &inchar_loop, NULL) != 0)
 	pthread_error("Failed to initialize the user input thread");
 }
 
     int
-ev_inchar(buf, maxlen, wtime, tb_change_cnt)
+ev_next(buf, maxlen, wtime, tb_change_cnt)
     char_u	*buf;
     int		maxlen;
     long	wtime;
     int		tb_change_cnt;
 {
-    ev_T	*msg;
-    EventType type;
+    ev_T	*ev;
+    EventType	type;
     void	*data;
 
     if (!queue_initialized)
@@ -311,22 +308,23 @@ ev_inchar(buf, maxlen, wtime, tb_change_cnt)
 
     cur_buf = buf;
     cur_maxlen = maxlen;
+    cur_wtime = wtime;
     cur_tb_change_cnt = tb_change_cnt;
 
     unlock(&io_mutex);
-    msg = queue_shift(wtime);
+    ev = queue_shift(wtime);
     lock(&io_mutex); /* Lock io since we are returning to vim */
-    lock(&char_wait_mutex);
-    cond_notify(&char_wait_cond);
-    unlock(&char_wait_mutex);
+    lock(&semaph_mutex);
+    cond_notify(&semaph_cond);
+    unlock(&semaph_mutex);
 
-    if (!msg) return 0;
+    if (!ev) return 0;
 
-    type = msg->type;
-    data = msg->data;
-    vim_free(msg);
+    type = ev->type;
+    data = ev->data;
+    vim_free(ev);
 
-    if (type == UserInput)
+    if (type == Input)
 	return cur_len;
 
     return 0;
