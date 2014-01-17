@@ -14,6 +14,7 @@ SRC_ALL =	\
 		src/digraph.c \
 		src/edit.c \
 		src/eval.c \
+		src/event_loop.c \
 		src/ex_cmds.c \
 		src/ex_cmds.h \
 		src/ex_cmds2.c \
@@ -43,8 +44,6 @@ SRC_ALL =	\
 		src/memline.c \
 		src/menu.c \
 		src/message.c \
-		src/message_queue.c \
-		src/message_queue.h \
 		src/misc1.c \
 		src/misc2.c \
 		src/move.c \
@@ -103,6 +102,7 @@ SRC_ALL =	\
 		src/proto/digraph.pro \
 		src/proto/edit.pro \
 		src/proto/eval.pro \
+		src/proto/event_loop.pro \
 		src/proto/ex_cmds.pro \
 		src/proto/ex_cmds2.pro \
 		src/proto/ex_docmd.pro \

@@ -12248,6 +12248,9 @@ f_has(argvars, rettv)
 	"emacs_tags",
 #endif
 	"eval",	    /* always present, of course! */
+#ifdef FEAT_EVENT_LOOP
+	"event_loop",
+#endif
 #ifdef FEAT_EX_EXTRA
 	"ex_extra",
 #endif
@@ -12353,9 +12356,6 @@ f_has(argvars, rettv)
 #endif
 #ifdef FEAT_MENU
 	"menu",
-#endif
-#ifdef FEAT_EVENT_LOOP
-	"event_loop",
 #endif
 #ifdef FEAT_SESSION
 	"mksession",

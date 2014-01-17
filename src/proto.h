@@ -133,8 +133,8 @@ int vim_vsnprintf(char *str, size_t str_m, char *fmt, va_list ap, typval_T *tvs)
 #  endif
 # endif
 
-# ifdef FEAT_MESSAGE_QUEUE
-#  include "message_queue.pro"
+# ifdef FEAT_EVENT_LOOP
+#  include "event_loop.pro"
 # endif
 
 # include "message.pro"

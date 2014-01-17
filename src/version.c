@@ -209,6 +209,11 @@ static char *(features[]) =
 #else
 	"-eval",
 #endif
+#ifdef FEAT_EVENT_LOOP
+	"+event_loop",
+#else
+	"-event_loop",
+#endif
 #ifdef FEAT_EX_EXTRA
 	"+ex_extra",
 #else
@@ -334,11 +339,6 @@ static char *(features[]) =
 	"+menu",
 #else
 	"-menu",
-#endif
-#ifdef FEAT_EVENT_LOOP
-	"+event_loop",
-#else
-	"-event_loop",
 #endif
 #ifdef FEAT_SESSION
 	"+mksession",

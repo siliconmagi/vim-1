@@ -1431,6 +1431,7 @@ BASIC_SRC = \
 	digraph.c \
 	edit.c \
 	eval.c \
+	event_loop.c \
 	ex_cmds.c \
 	ex_cmds2.c \
 	ex_docmd.c \
@@ -1449,7 +1450,6 @@ BASIC_SRC = \
 	memline.c \
 	menu.c \
 	message.c \
-	message_queue.c \
 	misc1.c \
 	misc2.c \
 	move.c \
@@ -1521,6 +1521,7 @@ OBJ_COMMON = \
 	objects/digraph.o \
 	objects/edit.o \
 	objects/eval.o \
+	objects/event_loop.o \
 	objects/ex_cmds.o \
 	objects/ex_cmds2.o \
 	objects/ex_docmd.o \
@@ -1538,7 +1539,6 @@ OBJ_COMMON = \
         objects/memline.o \
 	objects/menu.o \
 	objects/message.o \
-	objects/message_queue.o \
 	objects/misc1.o \
 	objects/misc2.o \
 	objects/move.o \
@@ -2508,6 +2508,9 @@ objects/edit.o: edit.c
 objects/eval.o: eval.c
 	$(CCC) -o $@ eval.c
 
+objects/event_loop.o: event_loop.c
+	$(CCC) -o $@ event_loop.c
+
 objects/ex_cmds.o: ex_cmds.c
 	$(CCC) -o $@ ex_cmds.c
 
@@ -2647,9 +2650,6 @@ objects/menu.o: menu.c
 
 objects/message.o: message.c
 	$(CCC) -o $@ message.c
-
-objects/message_queue.o: message_queue.c
-	$(CCC) -o $@ message_queue.c
 
 objects/misc1.o: misc1.c
 	$(CCC) -o $@ misc1.c

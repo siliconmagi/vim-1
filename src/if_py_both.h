@@ -811,7 +811,7 @@ VimEmit(PyObject *self UNUSED, PyObject *args)
     if (!PyArg_ParseTuple(args, "1", &event_args))
 	return NULL;
 
-    if (!(ev = strdup(StringToChars(event, &todecref)))
+    if (!(ev = strdup(StringToChars(event, &todecref))))
 	return NULL;
 
     if (event_args != Py_None &&
