@@ -2811,19 +2811,19 @@ AC_TRY_COMPILE([
 		      AC_DEFINE(HAVE_PTHREAD_NP_H),
 	      AC_MSG_RESULT(no))
 
-AC_ARG_ENABLE(messagequeue,
-	[  --enable-messagequeue[=OPTS]   Configure vim to use a message queue for synchronization with multi-threaded code. [default=yes] [OPTS=no/yes]], ,
-	[enable_messagequeue="yes"])
-AC_MSG_RESULT($enable_messagequeue)
+AC_ARG_ENABLE(eventloop,
+	[  --enable-eventloop[=OPTS]   Configure vim to use a message queue for synchronization with multi-threaded code. [default=yes] [OPTS=no/yes]], ,
+	[enable_eventloop="yes"])
+AC_MSG_RESULT($enable_eventloop)
 
-if test "$enable_messagequeue" = "yes"; then
+if test "$enable_eventloop" = "yes"; then
     # pthread is needed for the message queue
     AC_MSG_CHECKING([for pthread.h])
     AC_TRY_COMPILE([
     #include <pthread.h>],
 			  [int i; i = 0;],
 		  AC_MSG_RESULT(yes)
-			  AC_DEFINE(FEAT_MESSAGEQUEUE),
+			  AC_DEFINE(FEAT_EVENT_LOOP),
 		  AC_MSG_RESULT(no))
 fi
 

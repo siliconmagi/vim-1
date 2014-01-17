@@ -797,21 +797,28 @@ VimToPython(typval_T *our_tv, int depth, PyObject *lookup_dict)
     return ret;
 }
 
-#ifdef FEAT_MESSAGEQUEUE
+#ifdef FEAT_EVENT_LOOP
     static PyObject *
-VimDefer(PyObject *self UNUSED, PyObject *args)
+VimEmit(PyObject *self UNUSED, PyObject *args)
 {
-    char_u	*func;
-    PyObject	*string;
+    char_u	*ev, ev_args = NULL;
+    PyObject	*event, *event_args;
     PyObject	*todecref;
 
-    if (!PyArg_ParseTuple(args, "O", &string))
+    if (!PyArg_ParseTuple(args, "O", &event))
 	return NULL;
 
-    if (!(func = StringToChars(string, &todecref)))
+    if (!PyArg_ParseTuple(args, "1", &event_args))
 	return NULL;
 
-    message_loop_call(strdup(func));
+    if (!(ev = strdup(StringToChars(event, &todecref)))
+	return NULL;
+
+    if (event_args != Py_None &&
+       	!(ev_args = strdup(StringToChars(event_args, &todecref))))
+	return NULL;
+
+    ev_emit(ev, ev_args);
 
     Py_XDECREF(todecref);
     Py_INCREF(Py_None);
@@ -1310,8 +1317,8 @@ VimPathHook(PyObject *self UNUSED, PyObject *args)
 static struct PyMethodDef VimMethods[] = {
     /* name,	    function,			calling,			documentation */
     {"command",	    VimCommand,			METH_O,				"Execute a Vim ex-mode command" },
-#ifdef FEAT_MESSAGEQUEUE
-    {"defer",	    VimDefer,			METH_VARARGS,			"Call a vim function in the next message loop iteration" },
+#ifdef FEAT_EVENT_LOOP
+    {"emit",	    VimEmit,			METH_VARARGS,			"Notify vim of an event " },
 #endif
     {"eval",	    VimEval,			METH_VARARGS,			"Evaluate an expression using Vim evaluator" },
     {"bindeval",    VimEvalPy,			METH_O,				"Like eval(), but returns objects attached to vim ones"},

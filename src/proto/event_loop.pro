@@ -1,3 +1,3 @@
-/* message_queue.c */
+/* event_loop.c */
 int ev_inchar __ARGS((char_u *buf, int maxlen, long wtime, int tb_change_cnt));
-void message_loop_call __ARGS((char *func));
+void ev_emit __ARGS((char *event, char *args));

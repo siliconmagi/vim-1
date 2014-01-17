@@ -324,7 +324,7 @@
 #undef DYNAMIC_LUA
 
 /* Define if you want to use thread-safe message queue. */
-#undef FEAT_MESSAGEQUEUE
+#undef FEAT_EVENT_LOOP
 
 /* Define if you want to include the MzScheme interpreter. */
 #undef FEAT_MZSCHEME

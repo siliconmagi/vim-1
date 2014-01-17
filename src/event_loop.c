@@ -8,7 +8,7 @@
 
 #include "vim.h"
 
-#ifdef FEAT_MESSAGEQUEUE
+#ifdef FEAT_EVENT_LOOP
 #include <stdlib.h>
 #include <time.h>
 #include <pthread.h>

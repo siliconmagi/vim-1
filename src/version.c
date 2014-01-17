@@ -335,10 +335,10 @@ static char *(features[]) =
 #else
 	"-menu",
 #endif
-#ifdef FEAT_MESSAGEQUEUE
-	"+messagequeue",
+#ifdef FEAT_EVENT_LOOP
+	"+event_loop",
 #else
-	"-messagequeue",
+	"-event_loop",
 #endif
 #ifdef FEAT_SESSION
 	"+mksession",
