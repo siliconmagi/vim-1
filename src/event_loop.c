@@ -39,8 +39,8 @@ pthread_t	    background_thread;
 pthread_mutex_t	    semaph_mutex;
 pthread_cond_t	    semaph_cond;
 
-/* global lock that must be held by any thread that will call or return
- * control to vim */ 
+/* Global lock that must be acquired before jumping to any code outside
+ * this file */ 
 pthread_mutex_t     io_mutex;
 
 int		    queue_initialized = FALSE;
@@ -187,7 +187,8 @@ queue_shift(long ms)
 
     lock(&event_queue.mutex);
 
-    if (event_queue.head == NULL) {
+    if (event_queue.head == NULL)
+    {
 	/* Queue is empty, wait for more */
 	if (ms >= 0)
 	    wait_result = timedwait(&event_queue.cond, &event_queue.mutex, ms);
@@ -227,9 +228,8 @@ inchar_loop(arg)
 	{
 	    /* Wait for at most 100 ms */
 	    lock(&io_mutex);
-	    wt = cur_wtime >= 100 ? 100 : cur_wtime;
-	    cur_len = ui_inchar(cur_buf, cur_maxlen, wt, cur_tb_change_cnt);
-	    if (cur_len > 0)
+	    cur_len = ui_inchar(cur_buf, cur_maxlen, 100, cur_tb_change_cnt);
+	    if (cur_len > 0 || cur_wtime < 0)
 		break;
 	    unlock(&io_mutex);
 	}
@@ -303,7 +303,7 @@ ev_next(buf, maxlen, wtime, tb_change_cnt)
 	queue_initialized = TRUE;
     }
 
-    if (wtime == 0) /* This would not block, so just call it directly */
+    if (wtime >= 0) /* Dont poll for events when waiting for more keys */
 	return ui_inchar(buf, maxlen, wtime, tb_change_cnt);
 
     cur_buf = buf;
