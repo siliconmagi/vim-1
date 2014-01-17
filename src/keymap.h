@@ -267,6 +267,7 @@ enum key_extra
     , KE_NOP		/* doesn't do something */
     , KE_FOCUSGAINED	/* focus gained */
     , KE_FOCUSLOST	/* focus lost */
+    , KE_USEREVENT	/* event emitted directly or indirectly by the user */
 };
 
 /*
@@ -466,6 +467,8 @@ enum key_extra
 #define K_FOCUSLOST	TERMCAP2KEY(KS_EXTRA, KE_FOCUSLOST)
 
 #define K_CURSORHOLD	TERMCAP2KEY(KS_EXTRA, KE_CURSORHOLD)
+
+#define K_USEREVENT	TERMCAP2KEY(KS_EXTRA, KE_USEREVENT)
 
 /* Bits for modifier mask */
 /* 0x01 cannot be used, because the modifier must be 0x02 or higher */

@@ -18,10 +18,7 @@ typedef enum { Input, Custom } EventType;
 typedef struct ev_T
 { 
     struct ev_T * next;
-    EventType type;
-    struct event_data {
-	char_u *event, *event_args;
-    } *data;
+    char_u *event, *event_args;
 } ev_T;
 
 typedef struct event_queue_T
@@ -134,14 +131,14 @@ cond_notify(pthread_cond_t *cond)
  * Insert a event at the end of the queue.
  */
     static void
-queue_push(type, data)
-    EventType		type;    /* Event type */
-    struct event_data	*data;   /* Event data */
+queue_push(event, event_args)
+    char_u              *event;		/* Event type */
+    char_u              *event_args;	/* Event type */
 {
     int empty;
     ev_T *ev = (ev_T *)alloc(sizeof(ev_T));
-    ev->type = type;
-    ev->data = data;
+    ev->event = event;
+    ev->event_args = event_args;
     ev->next = NULL;
 
     /* Acquire queue lock */
@@ -233,7 +230,7 @@ inchar_loop(arg)
 		break;
 	    unlock(&io_mutex);
 	}
-	queue_push(Input, NULL);
+	queue_push(NULL, NULL);
 	lock(&semaph_mutex);
 	unlock(&io_mutex);
 	cond_wait(&semaph_cond, &semaph_mutex);
@@ -286,6 +283,7 @@ queue_init()
 	pthread_error("Failed to initialize the user input thread");
 }
 
+
     int
 ev_next(buf, maxlen, wtime, tb_change_cnt)
     char_u	*buf;
@@ -294,8 +292,7 @@ ev_next(buf, maxlen, wtime, tb_change_cnt)
     int		tb_change_cnt;
 {
     ev_T	*ev;
-    EventType	type;
-    void	*data;
+    char_u	*event, *event_args;
 
     if (!queue_initialized)
     {
@@ -318,23 +315,27 @@ ev_next(buf, maxlen, wtime, tb_change_cnt)
     cond_notify(&semaph_cond);
     unlock(&semaph_mutex);
 
-    if (!ev) return 0;
+    if (ev)
+    {
+	event = ev->event;
+	event_args = ev->event_args;
+	vim_free(ev);
+    }
 
-    type = ev->type;
-    data = ev->data;
-    vim_free(ev);
+    if (ev == NULL || event == NULL) return cur_len;
 
-    if (type == Input)
-	return cur_len;
+    buf[0] = K_SPECIAL;
+    buf[1] = KS_EXTRA;
+    buf[2] = (int)KE_USEREVENT;
 
-    return 0;
+    return 3;
 }
 
 
     void
-ev_emit(char * event, char * arg)
+ev_emit(char_u *event, char_u *event_args)
 {
-    queue_push(Custom, strdup(event));
+    queue_push(event, event_args);
 }
 
 #endif

@@ -801,24 +801,21 @@ VimToPython(typval_T *our_tv, int depth, PyObject *lookup_dict)
     static PyObject *
 VimEmit(PyObject *self UNUSED, PyObject *args)
 {
-    char_u	*ev, ev_args = NULL;
+    char_u	*ev;
     PyObject	*event, *event_args;
     PyObject	*todecref;
 
     if (!PyArg_ParseTuple(args, "O", &event))
 	return NULL;
 
-    if (!PyArg_ParseTuple(args, "1", &event_args))
-	return NULL;
-
     if (!(ev = strdup(StringToChars(event, &todecref))))
 	return NULL;
 
-    if (event_args != Py_None &&
-       	!(ev_args = strdup(StringToChars(event_args, &todecref))))
-	return NULL;
+//     if (event_args != Py_None &&
+//        	!(ev_args = strdup(StringToChars(event_args, &todecref))))
+// 	return NULL;
 
-    ev_emit(ev, ev_args);
+    ev_emit(ev, NULL);
 
     Py_XDECREF(todecref);
     Py_INCREF(Py_None);

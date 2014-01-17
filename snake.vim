@@ -1,4 +1,4 @@
-if has('messagequeue')
+if has('event_loop')
 
 set nocompatible
 set nocursorline
@@ -68,9 +68,9 @@ def run_game():
 	timeout = 0.001 * (150 - (len(snake)/5 + len(snake)/10)%120)   # Increases the speed of Snake as its length increases
 	prevKey = key                                                  # Previous key pressed
 	lock.release()
-	vim.defer('Update')
+	vim.emit('update-screen')
 	sleep(timeout)
-    vim.defer('End')
+    vim.emit('end-game')
 EOF
  
 function Update()
@@ -88,7 +88,7 @@ else:
     addstr(last[0], last[1], ' ')
 addstr(snake[0][0], snake[0][1], '#')
 addstr(0, 2, 'Score : ' + str(score) + ' ')                    # Printing 'Score' and
-addstr(0, 27, ' SNAKE / MOVEMENTS(hjkl) EXIT(i) PAUSE(space) ')
+addstr(0, 27, ' SNAKE / MOVEMENTs(hjkl) EXIT(i) PAUSE(space) ')
 lock.release()
 EOF
 endfunction
@@ -122,9 +122,12 @@ nnoremap <buffer> l :call KeyPress('right')<cr>
 nnoremap <buffer> i :call KeyPress('esc')<cr>
 nnoremap <buffer> <space> :call KeyPress('space')<cr>
 
+au User som*m call Update()
+
 python << EOF
 game = Thread(target=run_game)
 game.daemon = True
 game.start()
 EOF
 endif
+

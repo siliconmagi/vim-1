@@ -1188,6 +1188,12 @@ doESCkey:
 	    break;
 #endif
 
+#ifdef FEAT_EVENT_LOOP
+	case K_USEREVENT:
+	    apply_autocmds(EVENT_USER, (char_u *)"somename", NULL, TRUE, NULL);
+	    break;
+#endif
+
 #ifdef FEAT_GUI_W32
 	    /* On Win32 ignore <M-F4>, we get it when closing the window was
 	     * cancelled. */

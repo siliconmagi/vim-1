@@ -3091,13 +3091,15 @@ fix_input_buffer(buf, len, script)
 	if (p[0] == NUL || (p[0] == K_SPECIAL && !script
 #ifdef FEAT_AUTOCMD
 		    /* timeout may generate K_CURSORHOLD */
-		    && (i < 2 || p[1] != KS_EXTRA || p[2] != (int)KE_CURSORHOLD)
+		    && (i < 2 || p[1] != KS_EXTRA
+		       	|| (p[2] != (int)KE_CURSORHOLD
+			    && p[2] != (int)KE_USEREVENT)
 #endif
 #if defined(WIN3264) && !defined(FEAT_GUI)
 		    /* Win32 console passes modifiers */
 		    && (i < 2 || p[1] != KS_MODIFIER)
 #endif
-		    ))
+		    )))
 	{
 	    mch_memmove(p + 3, p + 1, (size_t)i);
 	    p[2] = K_THIRD(p[0]);
