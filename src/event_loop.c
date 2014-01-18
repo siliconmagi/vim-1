@@ -164,22 +164,8 @@ event_cursorhold(buf)
 
 
 /*
- * Initialize the event queue
- */
-    static void
-queue_init()
-{
-    if (pthread_mutex_init(&event_queue.mutex, NULL) != 0)
-	pthread_error("Failed to init the mutex");
-
-    event_queue.head = NULL;
-    event_queue.tail = NULL;
-}
-
-
-/*
- * Bridge between vim and the event loop, 'disguised' as a function that returns
- * keys(where one of the special keys is K_USEREVENT
+ * Bridge between vim and the event loop, 'disguised' as a function that
+ * returns keys(where one of the special keys is K_USEREVENT
  */
     int
 ev_next(buf, maxlen, wtime, tb_change_cnt)
@@ -193,10 +179,12 @@ ev_next(buf, maxlen, wtime, tb_change_cnt)
     int		trig_curshold;
     long	ellapsed;
 
-    /* Initialize the queue if not done already */
+    /* Initialize the queue mutex if not done already */
     if (!queue_initialized)
     {
-	queue_init();
+	if (pthread_mutex_init(&event_queue.mutex, NULL) != 0)
+	    pthread_error("Failed to init the mutex");
+
 	queue_initialized = TRUE;
     }
 
