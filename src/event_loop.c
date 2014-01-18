@@ -122,7 +122,8 @@ queue_push(name, event_args)
 }
 
 
-/* Take an event from the beginning of the queue */
+/* Take an event from the beginning of the queue.
+ * Returns NULL if the queue is empty. */
     static ev_T *
 queue_shift()
 {
@@ -130,7 +131,8 @@ queue_shift()
 
     lock(&event_queue.mutex);
     rv = event_queue.head;
-    event_queue.head = rv->next;
+    if (rv != NULL)
+        event_queue.head = rv->next;
     unlock(&event_queue.mutex);
 
     return rv;
@@ -201,6 +203,10 @@ ev_next(buf, maxlen, wtime, tb_change_cnt)
 
     do
     {
+        ev = queue_shift();
+        if (ev != NULL)
+            break;
+        
 	len = ui_inchar(buf, maxlen, POLL_INTERVAL, tb_change_cnt);
 	ellapsed += POLL_INTERVAL;
 
@@ -215,10 +221,9 @@ ev_next(buf, maxlen, wtime, tb_change_cnt)
 	if (trig_curshold && ellapsed >= p_ut)
 	    return event_cursorhold(buf);
 
-    } while (event_queue.head == NULL);
+    } while (1);
 
     /* Got an event, shift from the queue and set the event parameters */
-    ev = queue_shift();
     current_event = ev->name;
     current_event_args = ev->event_args;
     vim_free(ev);
