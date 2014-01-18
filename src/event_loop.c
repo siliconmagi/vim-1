@@ -11,7 +11,7 @@
 #ifdef FEAT_EVENT_LOOP
 #include <pthread.h>
 
-#define INTERRUPT_INTERVAL 100 /* Interval used to check for events */
+#define POLL_INTERVAL 100 /* Interval used to poll for events */
 
 typedef struct ev_T
 { 
@@ -167,15 +167,17 @@ ev_next(buf, maxlen, wtime, tb_change_cnt)
 
     do
     {
-	len = ui_inchar(buf, maxlen, 100, tb_change_cnt);
-	ellapsed += 100;
+	len = ui_inchar(buf, maxlen, POLL_INTERVAL, tb_change_cnt);
+	ellapsed += POLL_INTERVAL;
 
 	if (len > 0)
 	    return len;
 
-	/* We must trigger cursorhold events ourselves since its normally done
-	 * at lower levels which will never get the chance due to never
-	 * receiving negative timeout(-1) */
+	/* We must trigger cursorhold events ourselves. Normally cursorholds
+	 * are triggered at a platform-specific lower function when an
+	 * infinite timeout is passed, but those won't get the chance
+	 * because we never pass infinite timeout in order to poll for
+	 * events from other threads */
 	if (ellapsed >= p_ut)
 	    return event_cursorhold(buf);
 
