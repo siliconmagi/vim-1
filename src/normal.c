@@ -9646,7 +9646,7 @@ nv_cursorhold(cap)
 nv_userevent(cap)
     cmdarg_T	*cap;
 {
-    apply_autocmds(EVENT_USER, (char_u *)"somename", NULL, TRUE, NULL);
+    apply_event_autocmd();
     cap->retval |= CA_COMMAND_BUSY;	/* don't call edit() now */
 }
 #endif

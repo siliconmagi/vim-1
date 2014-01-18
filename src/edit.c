@@ -1190,7 +1190,7 @@ doESCkey:
 
 #ifdef FEAT_EVENT_LOOP
 	case K_USEREVENT:
-	    apply_autocmds(EVENT_USER, (char_u *)"somename", NULL, TRUE, NULL);
+	    apply_event_autocmd();
 	    break;
 #endif
 

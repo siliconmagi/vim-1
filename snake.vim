@@ -68,9 +68,9 @@ def run_game():
 	timeout = 0.001 * (150 - (len(snake)/5 + len(snake)/10)%120)   # Increases the speed of Snake as its length increases
 	prevKey = key                                                  # Previous key pressed
 	lock.release()
-	vim.emit('update-screen')
+	vim.trigger('update-screen')
 	sleep(timeout)
-    vim.emit('end-game')
+    vim.trigger('end-game')
 EOF
  
 function Update()
@@ -122,7 +122,8 @@ nnoremap <buffer> l :call KeyPress('right')<cr>
 nnoremap <buffer> i :call KeyPress('esc')<cr>
 nnoremap <buffer> <space> :call KeyPress('space')<cr>
 
-au User som*m call Update()
+au User update-screen call Update()
+au User end-game call End()
 
 python << EOF
 game = Thread(target=run_game)

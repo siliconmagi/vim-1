@@ -42,6 +42,9 @@ pthread_mutex_t     io_mutex;
 
 int		    queue_initialized = FALSE;
 
+char_u *current_event;
+char_u *current_event_args;
+
 /* Current values for ui_inchar */
 char_u		    *cur_buf;
 int		    cur_maxlen;
@@ -292,7 +295,6 @@ ev_next(buf, maxlen, wtime, tb_change_cnt)
     int		tb_change_cnt;
 {
     ev_T	*ev;
-    char_u	*event, *event_args;
 
     if (!queue_initialized)
     {
@@ -317,12 +319,12 @@ ev_next(buf, maxlen, wtime, tb_change_cnt)
 
     if (ev)
     {
-	event = ev->event;
-	event_args = ev->event_args;
+	current_event = ev->event;
+	current_event_args = ev->event_args;
 	vim_free(ev);
     }
 
-    if (ev == NULL || event == NULL) return cur_len;
+    if (ev == NULL || current_event == NULL) return cur_len;
 
     buf[0] = K_SPECIAL;
     buf[1] = KS_EXTRA;
@@ -333,9 +335,20 @@ ev_next(buf, maxlen, wtime, tb_change_cnt)
 
 
     void
-ev_emit(char_u *event, char_u *event_args)
+ev_trigger(char_u *event, char_u *event_args)
 {
     queue_push(event, event_args);
+}
+
+/*
+ * Trigger User event
+ */
+    void
+apply_event_autocmd()
+{
+    apply_autocmds(EVENT_USER, current_event, NULL, TRUE, NULL);
+    vim_free(current_event);
+    vim_free(current_event_args);
 }
 
 #endif

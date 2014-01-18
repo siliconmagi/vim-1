@@ -799,23 +799,22 @@ VimToPython(typval_T *our_tv, int depth, PyObject *lookup_dict)
 
 #ifdef FEAT_EVENT_LOOP
     static PyObject *
-VimEmit(PyObject *self UNUSED, PyObject *args)
+VimTrigger(PyObject *self UNUSED, PyObject *args)
 {
-    char_u	*ev;
-    PyObject	*event, *event_args;
-    PyObject	*todecref;
+    char_u	*ev, *ev_args = NULL;
+    PyObject	*event, *event_args = Py_None, *todecref;
 
-    if (!PyArg_ParseTuple(args, "O", &event))
+    if (!PyArg_ParseTuple(args, "O|O", &event, &event_args))
 	return NULL;
 
     if (!(ev = strdup(StringToChars(event, &todecref))))
 	return NULL;
 
-//     if (event_args != Py_None &&
-//        	!(ev_args = strdup(StringToChars(event_args, &todecref))))
-// 	return NULL;
+    if (event_args != Py_None &&
+	    !(ev_args = strdup(StringToChars(event_args, &todecref))))
+	return NULL;
 
-    ev_emit(ev, NULL);
+    ev_trigger(ev, ev_args);
 
     Py_XDECREF(todecref);
     Py_INCREF(Py_None);
@@ -1315,7 +1314,7 @@ static struct PyMethodDef VimMethods[] = {
     /* name,	    function,			calling,			documentation */
     {"command",	    VimCommand,			METH_O,				"Execute a Vim ex-mode command" },
 #ifdef FEAT_EVENT_LOOP
-    {"emit",	    VimEmit,			METH_VARARGS,			"Notify vim of an event " },
+    {"trigger",	    VimTrigger,			METH_VARARGS,			"Notify vim of an event " },
 #endif
     {"eval",	    VimEval,			METH_VARARGS,			"Evaluate an expression using Vim evaluator" },
     {"bindeval",    VimEvalPy,			METH_O,				"Like eval(), but returns objects attached to vim ones"},

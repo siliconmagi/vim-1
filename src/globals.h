@@ -1614,6 +1614,11 @@ EXTERN FILE *time_fd INIT(= NULL);  /* where to write startup timing */
 EXTERN int ignored;
 EXTERN char *ignoredp;
 
+#ifdef FEAT_EVENT_LOOP
+EXTERN char_u *current_event;
+EXTERN char_u *current_event_args;
+#endif
+
 /*
  * Optional Farsi support.  Include it here, so EXTERN and INIT are defined.
  */
