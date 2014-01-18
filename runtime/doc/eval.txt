@@ -6410,6 +6410,9 @@ ebcdic			Compiled on a machine with ebcdic character set.
 emacs_tags		Compiled with support for Emacs tags.
 eval			Compiled with expression evaluation support.  Always
 			true, of course!
+event_loop		Compiled with event loop that scripting languages
+			languages (python, ruby...) can use to safely call
+			vim from other threads.
 ex_extra		Compiled with extra Ex commands |+ex_extra|.
 extra_search		Compiled with support for |'incsearch'| and
 			|'hlsearch'|
@@ -6455,9 +6458,6 @@ lua			Compiled with Lua interface |Lua|.
 mac			Macintosh version of Vim.
 macunix			Macintosh version of Vim, using Unix files (OS-X).
 menu			Compiled with support for |:menu|.
-messagequeue		Compiled with a message queue that scripting languages
-			languages (python, ruby...) can use to safely call
-			vim from other threads.
 mksession		Compiled with support for |:mksession|.
 modify_fname		Compiled with file name modifiers. |filename-modifiers|
 mouse			Compiled with support mouse.

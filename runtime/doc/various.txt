@@ -324,6 +324,7 @@ N  *+digraphs*		|digraphs| *E196*
    *+dnd*		Support for DnD into the "~ register |quote_~|.
 B  *+emacs_tags*	|emacs-tags| files
 N  *+eval*		expression evaluation |eval.txt|
+   *+event_loop*	Compiled with thread-safe event loop.
 N  *+ex_extra*		Vim's extra Ex commands: |:center|, |:left|,
 			|:normal|, |:retab| and |:right|
 N  *+extra_search*	|'hlsearch'| and |'incsearch'| options.
@@ -357,7 +358,6 @@ N  *+localmap*		Support for mappings local to a buffer |:map-local|
 m  *+lua*		|Lua| interface
 m  *+lua/dyn*		|Lua| interface |/dyn|
 N  *+menu*		|:menu|
-   *+messagequeue*	Compiled with thread-safe message queue.
 N  *+mksession*		|:mksession|
 N  *+modify_fname*	|filename-modifiers|
 N  *+mouse*		Mouse handling |mouse-using|

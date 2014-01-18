@@ -11,6 +11,8 @@
 #ifdef FEAT_EVENT_LOOP
 #include <pthread.h>
 
+#define INTERRUPT_INTERVAL 100 /* Interval used to check for events */
+
 typedef struct ev_T
 { 
     struct ev_T * next;
@@ -104,6 +106,31 @@ queue_shift()
     return rv;
 }
 
+
+    static int
+event_user(buf)
+    char_u	*buf;
+{
+    buf[0] = K_SPECIAL;
+    buf[1] = KS_EXTRA;
+    buf[2] = (int)KE_USEREVENT;
+
+    return 3;
+}
+
+
+    static int
+event_cursorhold(buf)
+    char_u	*buf;
+{
+    buf[0] = K_SPECIAL;
+    buf[1] = KS_EXTRA;
+    buf[2] = (int)KE_CURSORHOLD;
+
+    return 3;
+}
+
+
 /*
  * Initialize the event queue
  */
@@ -127,6 +154,7 @@ ev_next(buf, maxlen, wtime, tb_change_cnt)
 {
     ev_T	*ev;
     int		len;
+    long	ellapsed = 0;
 
     if (!queue_initialized)
     {
@@ -140,8 +168,17 @@ ev_next(buf, maxlen, wtime, tb_change_cnt)
     do
     {
 	len = ui_inchar(buf, maxlen, 100, tb_change_cnt);
+	ellapsed += 100;
+
 	if (len > 0)
 	    return len;
+
+	/* We must trigger cursorhold events ourselves since its normally done
+	 * at lower levels which will never get the chance due to never
+	 * receiving negative timeout(-1) */
+	if (ellapsed >= p_ut)
+	    return event_cursorhold(buf);
+
     } while (event_queue.head == NULL);
 
     ev = queue_shift();
@@ -149,11 +186,7 @@ ev_next(buf, maxlen, wtime, tb_change_cnt)
     current_event_args = ev->event_args;
     vim_free(ev);
 
-    buf[0] = K_SPECIAL;
-    buf[1] = KS_EXTRA;
-    buf[2] = (int)KE_USEREVENT;
-
-    return 3;
+    return event_user(buf);
 }
 
 
