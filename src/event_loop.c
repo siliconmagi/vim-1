@@ -53,8 +53,7 @@ typedef struct event_queue_T
 
 event_queue_T	    event_queue;
 
-/* Flag check if the queue is initialized */
-int		    queue_initialized = FALSE;
+static pthread_once_t once_control = PTHREAD_ONCE_INIT;
 
 /* Module-globals that contain the event name/arg currently being processed */
 char_u *current_event;
@@ -87,6 +86,14 @@ unlock(pthread_mutex_t *mutex)
 }
 
 
+    static void
+init_queue()
+{
+    if (pthread_mutex_init(&event_queue.mutex, NULL) != 0)
+	pthread_error("Failed to init the mutex");
+}
+
+
 /* 
  * TODO This should block when vim is unable to process events
  * Insert a event at the end of the queue.
@@ -100,6 +107,8 @@ queue_push(name, event_args)
     ev->name = name;
     ev->event_args = event_args;
     ev->next = NULL;
+
+    pthread_once(&once_control, init_queue);
 
     /* Nothing much to comment here, basic linked list insertion protected
      * by the queue mutext */
@@ -128,6 +137,8 @@ queue_push(name, event_args)
 queue_shift()
 {
     ev_T	*rv = NULL;
+
+    pthread_once(&once_control, init_queue);
 
     lock(&event_queue.mutex);
     rv = event_queue.head;
@@ -180,15 +191,6 @@ ev_next(buf, maxlen, wtime, tb_change_cnt)
     int		len;
     int		trig_curshold;
     long	ellapsed;
-
-    /* Initialize the queue mutex if not done already */
-    if (!queue_initialized)
-    {
-	if (pthread_mutex_init(&event_queue.mutex, NULL) != 0)
-	    pthread_error("Failed to init the mutex");
-
-	queue_initialized = TRUE;
-    }
 
     /* Dont poll for events when a timeout is passed */
     if (wtime >= 0)
