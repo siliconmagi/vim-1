@@ -9,8 +9,6 @@
 #include "vim.h"
 
 #ifdef FEAT_EVENT_LOOP
-#include <stdlib.h>
-#include <time.h>
 #include <pthread.h>
 
 typedef struct ev_T
