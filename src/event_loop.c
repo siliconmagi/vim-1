@@ -249,6 +249,11 @@ ev_trigger(char_u *name, char_u *event_args)
     void
 apply_event_autocmd()
 {
+    if (current_event_args != NULL)
+	set_vim_var_string(VV_EVENT_ARG, current_event_args, -1);
+    else
+	set_vim_var_string(VV_EVENT_ARG, (char_u *)"", -1);
+
     apply_autocmds(EVENT_USER, current_event, NULL, TRUE, NULL);
     vim_free(current_event);
     vim_free(current_event_args);
