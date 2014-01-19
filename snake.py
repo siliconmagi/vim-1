@@ -3,6 +3,7 @@ from random import randint
 from time import sleep
 import sys, vim
 from threading import Thread, Lock
+sys.excepthook = lambda *args: sys.stderr.write('error %s, %s, %s\n' % args) and sys.stderr.flush()
 
 
 buf = vim.current.buffer
