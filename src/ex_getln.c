@@ -928,7 +928,7 @@ getcmdline(firstc, count, indent)
 	{
 	case K_USEREVENT:
 	    apply_event_autocmd();
-	    redraw_later_clear();
+	    shell_resized();
 	    goto cmdline_not_changed;
 	case K_BS:
 	case Ctrl_H:

@@ -17,7 +17,7 @@ EOF
  
 function! Update()
 python << EOF
-snake.update(buf)
+snake.update()
 EOF
 endfunction
 
@@ -29,7 +29,7 @@ unmap <buffer> l
 unmap <buffer> <esc>
 unmap <buffer> <space>
 python << EOF
-snake.end(buf)
+snake.end()
 EOF
 endfunction
 
@@ -50,7 +50,7 @@ au User update-screen call Update()
 au User end-game call End()
 
 python << EOF
-snake.start(vim, buf)
+snake.start()
 EOF
 endif
 

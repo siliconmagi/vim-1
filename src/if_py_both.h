@@ -801,22 +801,27 @@ VimToPython(typval_T *our_tv, int depth, PyObject *lookup_dict)
     static PyObject *
 VimTrigger(PyObject *self UNUSED, PyObject *args)
 {
-    char_u	*ev, *ev_args = NULL;
-    PyObject	*event, *event_args = Py_None, *todecref;
+    char_u	*ev, *ev_arg = NULL;
+    PyObject	*event, *event_arg = Py_None, *todecref;
 
-    if (!PyArg_ParseTuple(args, "O|O", &event, &event_args))
+    
+    if (!PyArg_ParseTuple(args, "O|O", &event, &event_arg))
 	return NULL;
 
     if (!(ev = strdup(StringToChars(event, &todecref))))
 	return NULL;
 
-    if (event_args != Py_None &&
-	    !(ev_args = strdup(StringToChars(event_args, &todecref))))
+    Py_XDECREF(todecref);
+
+    if (event_arg != Py_None &&
+	    !(ev_arg = strdup(StringToChars(event_arg, &todecref))))
 	return NULL;
 
-    ev_trigger(ev, ev_args);
+    if (ev_arg != NULL)
+	Py_XDECREF(todecref);
 
-    Py_XDECREF(todecref);
+    ev_trigger(ev, ev_arg);
+
     Py_INCREF(Py_None);
 
     return Py_None;

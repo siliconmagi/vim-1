@@ -5,7 +5,8 @@ provided that  other threads can use to notify vim main loop about events.
 
 Events published to the queue will be executed as ['User'
 autocommands](http://vimdoc.sourceforge.net/htmldoc/autocmd.html#autocmd-events)
-with the filename matching the event name.
+with the filename matching the event name and v:event_arg as a string
+argument(empty string if no arguments were passed to the event).
 
 Here's a simple example:
 
@@ -21,7 +22,7 @@ from time import sleep
 def run():
     while True:
         sleep(1)
-        vim.trigger('my-custom-event')
+        vim.trigger('my-custom-event', 'this message came from another thread!')
 
 t = Thread(target=run)
 t.daemon = True # Only daemon threads will be killed when vim exits
@@ -30,7 +31,7 @@ EOF
 
 function! Notify()
 python << EOF
-vim.current.buffer.append('this message came from another thread!')
+vim.current.buffer.append(vim.eval('v:event_arg'))
 EOF
 endfunction
 
