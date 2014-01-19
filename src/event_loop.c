@@ -29,7 +29,6 @@
 #include "vim.h"
 
 #ifdef FEAT_EVENT_LOOP
-
 #include <pthread.h>
 
 #define POLL_INTERVAL 100 /* Interval used to poll for events */
@@ -52,7 +51,6 @@ typedef struct event_queue_T
     ev_T		*tail;
 } event_queue_T;
 
-pthread_mutex_t	    vim_mutex;
 event_queue_T	    event_queue;
 
 /* Flag check if the queue is initialized */
@@ -187,9 +185,6 @@ ev_next(buf, maxlen, wtime, tb_change_cnt)
 	if (pthread_mutex_init(&event_queue.mutex, NULL) != 0)
 	    pthread_error("Failed to init the mutex");
 
-	if (pthread_mutex_init(&vim_mutex, NULL) != 0)
-	    pthread_error("Failed to init the mutex");
-
 	queue_initialized = TRUE;
     }
 
@@ -207,9 +202,7 @@ ev_next(buf, maxlen, wtime, tb_change_cnt)
     do
     {
 	len = ui_inchar(buf, maxlen, POLL_INTERVAL, tb_change_cnt);
-
-	if (trig_curshold)
-	    ellapsed += POLL_INTERVAL;
+	ellapsed += POLL_INTERVAL;
 
 	if (len > 0)
 	    return len; /* Got something, return now */
@@ -247,15 +240,9 @@ ev_trigger(char_u *name, char_u *event_args)
  * K_USEREVENT.
  */
     void
-apply_event_autocmd(void)
+apply_event_autocmd()
 {
-    if (current_event_args != NULL)
-	set_vim_var_string(VV_EVENT_ARG, current_event_args, -1);
-    else
-	set_vim_var_string(VV_EVENT_ARG, (char_u *)"", -1);
-
     apply_autocmds(EVENT_USER, current_event, NULL, TRUE, NULL);
-
     vim_free(current_event);
     vim_free(current_event_args);
 }
