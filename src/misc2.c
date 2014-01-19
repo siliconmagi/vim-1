@@ -6645,22 +6645,20 @@ has_non_ascii(s)
 #endif
 
 
-/*
-    int *
-process_open(argc, argv)
-    int		argc
-    char_u	**argv;
-{
-    char_u	*tempname;
-    char_u	*command;
-    char_u	*buffer = NULL;
-    int		len;
-    int		i = 0;
-    FILE	*fd;
 
-    if (check_restricted() || check_secure())
-	return NULL;
+//     int *
+// process_open(argc, argv)
+//     int		argc
+//     char_u	**argv;
+// {
+//     char_u	*tempname;
+//     char_u	*command;
+//     char_u	*buffer = NULL;
+//     int		len;
+//     int		i = 0;
+//     FILE	*fd;
 
-}
- *
- */
+//     if (check_restricted() || check_secure())
+// 	return NULL;
+
+// }

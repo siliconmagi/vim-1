@@ -48,13 +48,7 @@ typedef struct ev_T
 typedef struct event_queue_T
 {
     pthread_mutex_t	mutex;
-    /* Make sure reads to this variable always go to memory. thanks
-     * Ashley Hewson(@ashleyh) for pointing it out that compilers can
-     * optimize reads to use thread-local caches.
-     *
-     * Here's another reference on the subject:
-     * http://www.geeksforgeeks.org/understanding-volatile-qualifier-in-c/ */
-    volatile ev_T	*head;
+    ev_T		*head;
     ev_T		*tail;
 } event_queue_T;
 
