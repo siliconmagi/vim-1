@@ -53,8 +53,7 @@ typedef struct event_queue_T
 
 event_queue_T	    event_queue;
 
-/* Flag check if the queue is initialized */
-int		    queue_initialized = FALSE;
+static pthread_once_t once_control = PTHREAD_ONCE_INIT;
 
 /* Module-globals that contain the event name/arg currently being processed */
 char_u *current_event;
@@ -87,6 +86,14 @@ unlock(pthread_mutex_t *mutex)
 }
 
 
+    static void
+init_queue()
+{
+    if (pthread_mutex_init(&event_queue.mutex, NULL) != 0)
+	pthread_error("Failed to init the mutex");
+}
+
+
 /* 
  * TODO This should block when vim is unable to process events
  * Insert a event at the end of the queue.
@@ -100,6 +107,8 @@ queue_push(name, event_args)
     ev->name = name;
     ev->event_args = event_args;
     ev->next = NULL;
+
+    pthread_once(&once_control, init_queue);
 
     /* Nothing much to comment here, basic linked list insertion protected
      * by the queue mutext */
@@ -122,15 +131,19 @@ queue_push(name, event_args)
 }
 
 
-/* Take an event from the beginning of the queue */
+/* Take an event from the beginning of the queue.
+ * Returns NULL if the queue is empty. */
     static ev_T *
 queue_shift()
 {
     ev_T	*rv = NULL;
 
+    pthread_once(&once_control, init_queue);
+
     lock(&event_queue.mutex);
     rv = event_queue.head;
-    event_queue.head = rv->next;
+    if (rv != NULL)
+        event_queue.head = rv->next;
     unlock(&event_queue.mutex);
 
     return rv;
@@ -179,15 +192,6 @@ ev_next(buf, maxlen, wtime, tb_change_cnt)
     int		trig_curshold;
     long	ellapsed;
 
-    /* Initialize the queue mutex if not done already */
-    if (!queue_initialized)
-    {
-	if (pthread_mutex_init(&event_queue.mutex, NULL) != 0)
-	    pthread_error("Failed to init the mutex");
-
-	queue_initialized = TRUE;
-    }
-
     /* Dont poll for events when a timeout is passed */
     if (wtime >= 0)
 	return ui_inchar(buf, maxlen, wtime, tb_change_cnt);
@@ -201,6 +205,10 @@ ev_next(buf, maxlen, wtime, tb_change_cnt)
 
     do
     {
+        ev = queue_shift();
+        if (ev != NULL)
+            break;
+        
 	len = ui_inchar(buf, maxlen, POLL_INTERVAL, tb_change_cnt);
 	ellapsed += POLL_INTERVAL;
 
@@ -215,10 +223,9 @@ ev_next(buf, maxlen, wtime, tb_change_cnt)
 	if (trig_curshold && ellapsed >= p_ut)
 	    return event_cursorhold(buf);
 
-    } while (event_queue.head == NULL);
+    } while (1);
 
     /* Got an event, shift from the queue and set the event parameters */
-    ev = queue_shift();
     current_event = ev->name;
     current_event_args = ev->event_args;
     vim_free(ev);
