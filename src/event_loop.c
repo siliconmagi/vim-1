@@ -114,17 +114,16 @@ queue_push(name, event_args)
      * by the queue mutext */
     lock(&event_queue.mutex);
 
+    ev->next = NULL;
+
     if (event_queue.head == NULL) {
-	ev->next = event_queue.head;
 	event_queue.head = ev;
-    } else {
+    }
 
-	if (event_queue.tail == NULL)
-	    event_queue.head->next = ev;
-	else
-	    event_queue.tail->next = ev;
-
+    if (event_queue.tail == NULL) {
 	event_queue.tail = ev;
+    } else {
+	event_queue.tail->next = ev;
     }
 
     unlock(&event_queue.mutex);
@@ -137,13 +136,20 @@ queue_push(name, event_args)
 queue_shift()
 {
     ev_T	*rv = NULL;
+    ev_T	*next = NULL;
 
     pthread_once(&once_control, init_queue);
 
     lock(&event_queue.mutex);
     rv = event_queue.head;
-    if (rv != NULL)
-        event_queue.head = rv->next;
+    if (rv != NULL) {
+        next = rv->next;
+        event_queue.head = next;
+        if (next == NULL) {
+            /* We reached the end of the queue */
+            event_queue.tail = NULL;
+        }
+    }
     unlock(&event_queue.mutex);
 
     return rv;
