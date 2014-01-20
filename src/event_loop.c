@@ -47,17 +47,15 @@ typedef struct ev_T
 typedef struct event_queue_T
 {
     pthread_mutex_t	mutex;
+    /* The first element of the queue, or NULL if the queue is empty. */
     ev_T		*head;
+    /* The last element of the queue, or NULL if the queue is empty. */
     ev_T		*tail;
 } event_queue_T;
 
-event_queue_T	    event_queue;
+static event_queue_T	    event_queue;
 
 static pthread_once_t once_control = PTHREAD_ONCE_INIT;
-
-/* Module-globals that contain the event name/arg currently being processed */
-char_u *current_event;
-char_u *current_event_args;
 
 /*
  * Private helpers to used to deal with threading structures
@@ -115,16 +113,13 @@ queue_push(name, event_args)
     lock(&event_queue.mutex);
 
     if (event_queue.head == NULL) {
-	ev->next = event_queue.head;
 	event_queue.head = ev;
-    } else {
+    }
 
-	if (event_queue.tail == NULL)
-	    event_queue.head->next = ev;
-	else
-	    event_queue.tail->next = ev;
-
+    if (event_queue.tail == NULL) {
 	event_queue.tail = ev;
+    } else {
+	event_queue.tail->next = ev;
     }
 
     unlock(&event_queue.mutex);
@@ -137,13 +132,39 @@ queue_push(name, event_args)
 queue_shift()
 {
     ev_T	*rv = NULL;
+    ev_T	*next = NULL;
 
     pthread_once(&once_control, init_queue);
 
     lock(&event_queue.mutex);
     rv = event_queue.head;
-    if (rv != NULL)
-        event_queue.head = rv->next;
+    if (rv != NULL) {
+        next = rv->next;
+        /* Prevent unserialized access to subsequent elements */
+        rv->next = NULL;
+        event_queue.head = next;
+        if (next == NULL) {
+            /* We reached the end of the queue */
+            event_queue.tail = NULL;
+        }
+    }
+    unlock(&event_queue.mutex);
+
+    return rv;
+}
+
+
+/* Returns 1 if the queue is non-empty, 0 otherwise */
+    static int
+queue_peek()
+{
+    int		rv = 0;
+
+    pthread_once(&once_control, init_queue);
+
+    lock(&event_queue.mutex);
+    if (event_queue.head != NULL)
+        rv = 1;
     unlock(&event_queue.mutex);
 
     return rv;
@@ -187,7 +208,6 @@ ev_next(buf, maxlen, wtime, tb_change_cnt)
     long	wtime;
     int		tb_change_cnt;
 {
-    ev_T	*ev;
     int		len;
     int		trig_curshold;
     long	ellapsed;
@@ -203,12 +223,8 @@ ev_next(buf, maxlen, wtime, tb_change_cnt)
     else
 	before_blocking();  /* Normally called when doing a blocking wait */
 
-    do
+    while (!queue_peek())
     {
-        ev = queue_shift();
-        if (ev != NULL)
-            break;
-        
 	len = ui_inchar(buf, maxlen, POLL_INTERVAL, tb_change_cnt);
 	ellapsed += POLL_INTERVAL;
 
@@ -223,12 +239,7 @@ ev_next(buf, maxlen, wtime, tb_change_cnt)
 	if (trig_curshold && ellapsed >= p_ut)
 	    return event_cursorhold(buf);
 
-    } while (1);
-
-    /* Got an event, shift from the queue and set the event parameters */
-    current_event = ev->name;
-    current_event_args = ev->event_args;
-    vim_free(ev);
+    }
 
     return event_user(buf);
 }
@@ -249,14 +260,21 @@ ev_trigger(char_u *name, char_u *event_args)
     void
 apply_event_autocmd()
 {
-    if (current_event_args != NULL)
-	set_vim_var_string(VV_EVENT_ARG, current_event_args, -1);
-    else
-	set_vim_var_string(VV_EVENT_ARG, (char_u *)"", -1);
+    ev_T	*e = NULL;
 
-    apply_autocmds(EVENT_USER, current_event, NULL, TRUE, NULL);
-    vim_free(current_event);
-    vim_free(current_event_args);
+    while ((e = queue_shift()) != NULL)
+    {
+        if (e->event_args != NULL)
+            set_vim_var_string(VV_EVENT_ARG, e->event_args, -1);
+        else
+            set_vim_var_string(VV_EVENT_ARG, (char_u *)"", -1);
+
+        apply_autocmds(EVENT_USER, e->name, NULL, TRUE, NULL);
+
+        vim_free(e->name);
+        vim_free(e->event_args);
+        vim_free(e);
+    }
 }
 
 #endif
