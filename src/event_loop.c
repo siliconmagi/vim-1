@@ -47,11 +47,13 @@ typedef struct ev_T
 typedef struct event_queue_T
 {
     pthread_mutex_t	mutex;
+    /* The first element of the queue, or NULL if the queue is empty. */
     ev_T		*head;
+    /* The last element of the queue, or NULL if the queue is empty. */
     ev_T		*tail;
 } event_queue_T;
 
-event_queue_T	    event_queue;
+static event_queue_T	    event_queue;
 
 static pthread_once_t once_control = PTHREAD_ONCE_INIT;
 
@@ -110,8 +112,6 @@ queue_push(name, event_args)
      * by the queue mutext */
     lock(&event_queue.mutex);
 
-    ev->next = NULL;
-
     if (event_queue.head == NULL) {
 	event_queue.head = ev;
     }
@@ -140,6 +140,8 @@ queue_shift()
     rv = event_queue.head;
     if (rv != NULL) {
         next = rv->next;
+        /* Prevent unserialized access to subsequent elements */
+        rv->next = NULL;
         event_queue.head = next;
         if (next == NULL) {
             /* We reached the end of the queue */
@@ -152,15 +154,17 @@ queue_shift()
 }
 
 
-    static ev_T *
+/* Returns 1 if the queue is non-empty, 0 otherwise */
+    static int
 queue_peek()
 {
-    ev_T	*rv = NULL;
+    int		rv = 0;
 
     pthread_once(&once_control, init_queue);
 
     lock(&event_queue.mutex);
-    rv = event_queue.head;
+    if (event_queue.head != NULL)
+        rv = 1;
     unlock(&event_queue.mutex);
 
     return rv;
@@ -219,7 +223,7 @@ ev_next(buf, maxlen, wtime, tb_change_cnt)
     else
 	before_blocking();  /* Normally called when doing a blocking wait */
 
-    while (queue_peek() == NULL)
+    while (!queue_peek())
     {
 	len = ui_inchar(buf, maxlen, POLL_INTERVAL, tb_change_cnt);
 	ellapsed += POLL_INTERVAL;
