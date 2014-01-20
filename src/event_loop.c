@@ -55,10 +55,6 @@ event_queue_T	    event_queue;
 
 static pthread_once_t once_control = PTHREAD_ONCE_INIT;
 
-/* Module-globals that contain the event name/arg currently being processed */
-char_u *current_event;
-char_u *current_event_args;
-
 /*
  * Private helpers to used to deal with threading structures
  */
@@ -156,6 +152,21 @@ queue_shift()
 }
 
 
+    static ev_T *
+queue_peek()
+{
+    ev_T	*rv = NULL;
+
+    pthread_once(&once_control, init_queue);
+
+    lock(&event_queue.mutex);
+    rv = event_queue.head;
+    unlock(&event_queue.mutex);
+
+    return rv;
+}
+
+
 /* Set the USEREVENT special key into the input buffer */
     static int
 event_user(buf)
@@ -193,7 +204,6 @@ ev_next(buf, maxlen, wtime, tb_change_cnt)
     long	wtime;
     int		tb_change_cnt;
 {
-    ev_T	*ev;
     int		len;
     int		trig_curshold;
     long	ellapsed;
@@ -209,12 +219,8 @@ ev_next(buf, maxlen, wtime, tb_change_cnt)
     else
 	before_blocking();  /* Normally called when doing a blocking wait */
 
-    do
+    while (queue_peek() == NULL)
     {
-        ev = queue_shift();
-        if (ev != NULL)
-            break;
-        
 	len = ui_inchar(buf, maxlen, POLL_INTERVAL, tb_change_cnt);
 	ellapsed += POLL_INTERVAL;
 
@@ -229,12 +235,7 @@ ev_next(buf, maxlen, wtime, tb_change_cnt)
 	if (trig_curshold && ellapsed >= p_ut)
 	    return event_cursorhold(buf);
 
-    } while (1);
-
-    /* Got an event, shift from the queue and set the event parameters */
-    current_event = ev->name;
-    current_event_args = ev->event_args;
-    vim_free(ev);
+    }
 
     return event_user(buf);
 }
@@ -255,14 +256,21 @@ ev_trigger(char_u *name, char_u *event_args)
     void
 apply_event_autocmd()
 {
-    if (current_event_args != NULL)
-	set_vim_var_string(VV_EVENT_ARG, current_event_args, -1);
-    else
-	set_vim_var_string(VV_EVENT_ARG, (char_u *)"", -1);
+    ev_T	*e = NULL;
 
-    apply_autocmds(EVENT_USER, current_event, NULL, TRUE, NULL);
-    vim_free(current_event);
-    vim_free(current_event_args);
+    while ((e = queue_shift()) != NULL)
+    {
+        if (e->event_args != NULL)
+            set_vim_var_string(VV_EVENT_ARG, e->event_args, -1);
+        else
+            set_vim_var_string(VV_EVENT_ARG, (char_u *)"", -1);
+
+        apply_autocmds(EVENT_USER, e->name, NULL, TRUE, NULL);
+
+        vim_free(e->name);
+        vim_free(e->event_args);
+        vim_free(e);
+    }
 }
 
 #endif
