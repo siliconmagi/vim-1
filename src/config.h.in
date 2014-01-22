@@ -323,7 +323,7 @@
 /* Define for linking via dlopen() or LoadLibrary() */
 #undef DYNAMIC_LUA
 
-/* Define if you want to use thread-safe message queue. */
+/* Define if you want to use job control. */
 #undef FEAT_JOB_CONTROL
 
 /* Define if you want to include the MzScheme interpreter. */
