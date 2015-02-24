@@ -1132,6 +1132,10 @@ typedef struct qf_info_S qf_info_T;
 
 typedef struct file_buffer buf_T;
 
+#ifdef FEAT_VIMSHELL
+struct vim_shell_window;
+#endif
+
 struct file_buffer
 {
     memline_T	b_ml;		/* associated memline (also contains line
@@ -1576,6 +1580,11 @@ struct file_buffer
     int		b_was_netbeans_file;/* TRUE if b_netbeans_file was once set */
 #endif
 
+#ifdef FEAT_VIMSHELL
+    char	is_shell;                /* (flag) Is this buffer a shell? (0 = false) */
+    struct	vim_shell_window *shell; /* Pointer to the shell struct, or NULL */
+    int		gtk_input_id;            /* GTK-input id returned by gdk_input_add, only for GUI */
+#endif
 };
 
 

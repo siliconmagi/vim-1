@@ -1014,7 +1014,12 @@ a()
 STARTTEST
 :set cino= com=
 /comment
-olabel2: b();label3 /* post */:/* pre */ label4:f(/*com*/);if (/*com*/)cmd();
+olabel2: b();
+label3 /* post */:
+/* pre */ label4:
+f(/*com*/);
+if (/*com*/)
+cmd();
 ENDTEST
 
 a()

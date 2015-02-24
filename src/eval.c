@@ -10923,6 +10923,9 @@ f_has(argvars, rettv)
 #if defined(UNIX) && defined(FEAT_X11)
 	"X11",
 #endif
+#ifdef FEAT_VIMSHELL
+	"vimshell",
+#endif
 	NULL
     };
 

@@ -5936,6 +5936,10 @@ ex_syntax(eap)
 syntax_present(buf)
     buf_T	*buf;
 {
+#ifdef FEAT_VIMSHELL
+    if(buf->is_shell!=0)
+	return 0;
+#endif
     return (buf->b_syn_patterns.ga_len != 0
 	    || buf->b_syn_clusters.ga_len != 0
 	    || curbuf->b_keywtab.ht_used > 0

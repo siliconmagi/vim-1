@@ -809,7 +809,6 @@ LINT_OPTIONS = -beprxzF
 ###	 For LynxOS 3.1.0, tested on PC
 #EXTRA_LIBS= -lXext -lSM -lICE -lnetinet -lXmu
 
-
 ### (V)  For CX/UX 6.2	(on Harris/Concurrent NightHawk 4800, 5800). Remove
 ###	 -Qtarget if only in a 5800 environment.  (Kipp E. Howard)
 #CFLAGS = -O -Qtarget=m88110compat
@@ -1259,7 +1258,6 @@ NO_ATTR = -D__inline= -D__inline__= -DG_IMPLEMENT_INLINES \
 # Use this for cproto 3 patchlevel 7 or above (use "cproto -V" to check):
 PROTO_FLAGS = -m -M__ARGS -d -E"$(CPP)" $(NO_ATTR)
 
-
 ################################################
 ##   no changes required below this line      ##
 ################################################
@@ -1375,6 +1373,8 @@ BASIC_SRC = \
 	auto/pathdef.c \
 	popupmnu.c \
 	quickfix.c \
+	vim_shell.c \
+	terminal.c \
 	regexp.c \
 	screen.c \
 	search.c \
@@ -1446,6 +1446,8 @@ OBJ = \
 	objects/pathdef.o \
 	objects/popupmnu.o \
 	objects/quickfix.o \
+	objects/vim_shell.o \
+	objects/terminal.o \
 	objects/regexp.o \
 	objects/screen.o \
 	objects/search.o \
@@ -2486,6 +2488,12 @@ objects/popupmnu.o: popupmnu.c
 objects/quickfix.o: quickfix.c
 	$(CCC) -o $@ quickfix.c
 
+objects/vim_shell.o: vim_shell.c
+	$(CCC) -o $@ vim_shell.c
+
+objects/terminal.o: terminal.c
+	$(CCC) -o $@ terminal.c
+
 objects/regexp.o: regexp.c
 	$(CCC) -o $@ regexp.c
 
@@ -2748,6 +2756,8 @@ objects/quickfix.o: quickfix.c vim.h auto/config.h feature.h os_unix.h \
   auto/osdef.h ascii.h keymap.h term.h macros.h option.h structs.h \
   regexp.h gui.h gui_beval.h proto/gui_beval.pro ex_cmds.h proto.h \
   globals.h farsi.h arabic.h
+objects/terminal.o: terminal.c vim_shell.h
+objects/vim_shell.o: vim_shell.c vim_shell.h
 objects/regexp.o: regexp.c vim.h auto/config.h feature.h os_unix.h auto/osdef.h \
   ascii.h keymap.h term.h macros.h option.h structs.h regexp.h gui.h \
   gui_beval.h proto/gui_beval.pro ex_cmds.h proto.h globals.h farsi.h \

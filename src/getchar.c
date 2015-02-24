@@ -1711,6 +1711,7 @@ safe_vgetc()
     c = vgetc();
     if (c == NUL)
 	c = get_keystroke();
+
     return c;
 }
 

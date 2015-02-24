@@ -371,3 +371,8 @@
 
 /* Define if you want XSMP interaction as well as vanilla swapfile safety */
 #undef USE_XSMP_INTERACT
+
+/* VIMSHELL stuff */
+#undef HAVE_PTY_H
+#undef HAVE_LIBUTIL_H
+#undef HAVE_STDINT_H

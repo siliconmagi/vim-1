@@ -359,6 +359,14 @@ typedef		 long	long_i;
 
 /*
  * The characters and attributes cached for the screen.
+ * VIM-Shell: the VIM-shell really needs more than one byte for the attributes.
+ *            Despite of a single warning during compilation, it seems to work
+ *            fine to simply change the type here.
+ *            We use the sattr_T as follows:
+ *            The lowest byte is handled the same as before, for rendering attributes.
+ *            The remaining byte is split, the uppermost 4 bits for the active foreground
+ *            color, and the lowermost 4 bits for the active background color (at this
+ *            screen position).
  */
 typedef char_u schar_T;
 #ifdef FEAT_SYN_HL
@@ -1978,6 +1986,10 @@ typedef int proftime_T;	    /* dummy for function prototypes */
 # include <EXTERN.h>
 # include <perl.h>
 # include <XSUB.h>
+#endif
+
+#ifdef FEAT_VIMSHELL
+#include "vim_shell.h"
 #endif
 
 /* values for vim_handle_signal() that are not a signal */

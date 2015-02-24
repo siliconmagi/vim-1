@@ -2419,6 +2419,7 @@ gui_redraw_block(row1, col1, row2, col2, flags)
     long_u	old_hl_mask;
     int		off;
     sattr_T	first_attr;
+#endif
     int		idx, len;
     int		back, nback;
     int		retval = FALSE;

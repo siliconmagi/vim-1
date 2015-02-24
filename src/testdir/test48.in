@@ -14,7 +14,8 @@ C
 :"   Using "C" then then <CR> moves the last remaining character to the next
 :"    line.  (Mary Ellen Foster)
 j^/are
-Care belong to vim
+C
+are belong to vim
 :"
 :"   When past the end of a line that ends in a single character "b" skips
 :"    that word.
@@ -68,7 +69,8 @@ this is a test
 this is a test
 this is a test
 "r"
-absd
+ab
+sd
 abcv6efi.him0kl
 
 
